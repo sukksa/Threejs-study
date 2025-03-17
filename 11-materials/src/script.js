@@ -1,6 +1,17 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import {
+    OrbitControls
+} from 'three/examples/jsm/controls/OrbitControls.js'
 
+const textureLoader = new THREE.TextureLoader()
+const doorColorTexture = textureLoader.load('/textures/door/color.jpg')
+const doorAlphaTexture = textureLoader.load('/textures/door/alpha.jpg')
+const doorAmbientOcclusionTexture = textureLoader.load('/textures/door/ambientOcclusion.jpg')
+const doorHeightTexture = textureLoader.load('/textures/door/height.jpg')
+const doorMetalnessTexture = textureLoader.load('/textures/door/metalness.jpg')
+const doorRoughnessTexture = textureLoader.load('/textures/door/roughness.jpg')
+const doorNormalTexture = textureLoader.load('/textures/door/normal.jpg')
+const matcapTexture = textureLoader.load('/textures/matcaps/1.png')
 /**
  * Base
  */
@@ -17,9 +28,49 @@ const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
 }
+// MeshBasicMaterial
+// const material = new THREE.MeshBasicMaterial()
+// // material.map = doorColorTexture
+// // material.color.set('red')
+// // material.color = new THREE.Color('red')
+// // material.wireframe = true
 
-window.addEventListener('resize', () =>
-{
+// // material.opacity = 0.5
+// material.transparent = true // alphaMap opacity 都需要设置为true
+// material.alphaMap = doorColorTexture
+
+// // 设置内外哪面可见
+// // material.side = THREE.FrontSide // 默认
+// material.side = THREE.BackSide
+// // material.side = THREE.DoubleSide // 两面可见
+
+// MeshNormalMaterial
+// const material = new THREE.MeshNormalMaterial()
+// material.flatShading = true
+
+// MeshMatcapMaterial // 在无光源的情况下，使用matcap可以模拟光照效果
+const material = new THREE.MeshMatcapMaterial()
+material.matcap = matcapTexture
+
+const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 16, 16),
+    material
+)
+sphere.position.x = -1.5
+
+scene.add(new THREE.AxesHelper(1))
+const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    material
+)
+const torus = new THREE.Mesh(
+    new THREE.TorusGeometry(0.3, 0.2, 16, 32),
+    material
+)
+torus.position.x = 1.5
+scene.add(sphere, plane, torus)
+
+window.addEventListener('resize', () => {
     // Update sizes
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
@@ -61,12 +112,18 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
  */
 const clock = new THREE.Clock()
 
-const tick = () =>
-{
+const tick = () => {
     const elapsedTime = clock.getElapsedTime()
 
     // Update controls
     controls.update()
+
+    sphere.rotation.y = 0.1 * elapsedTime
+    sphere.rotation.x = 0.1 * elapsedTime
+    plane.rotation.y = 0.1 * elapsedTime
+    plane.rotation.x = 0.1 * elapsedTime
+    torus.rotation.y = 0.1 * elapsedTime
+    torus.rotation.x = 0.1 * elapsedTime
 
     // Render
     renderer.render(scene, camera)

@@ -311,7 +311,7 @@ const tick = () => {
 tick()
 ```
 
-# Controls
+## Controls
 
 [FlyControls](https://threejs.org/docs/examples/en/controls/FlyControls.html) 像控制飞船一样旋转镜头
 
@@ -326,3 +326,359 @@ tick()
 [TransformControls](https://threejs.org/docs/examples/en/controls/TransformControls.html) 变换控件，可以移动物体
 
 [DragControls](https://threejs.org/docs/examples/en/controls/DragControls.html) 类似TransformControls可以拖动物体
+
+## Fullscreen and Resize
+
+### Resize
+
+```css
+.webgl{
+  position: fixed; 	// 固定canvas
+  top: 0;
+  left: 0;
+  outline: none;  // 去除边框
+}
+html, body{
+  overflow: hidden; // 去除滚动事件
+}
+```
+
+```js
+const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
+}
+// 添加 resize 事件，监听窗口变化。
+window.addEventListener('resize', () => {
+    // 更新sizes
+    sizes.width = window.innerWidth
+    sizes.height = window.innerHeight
+	// 更新camera
+    camera.aspect = sizes.width / sizes.height // 宽高比
+    camera.updateProjectionMatrix() // 提醒相机更新投影矩阵
+  	// 渲染
+    renderer.setSize(sizes.width, sizes.height)
+})
+```
+
+### Pixel ratio
+
+设备像素比，屏幕上的一个物理像素单位相对于软件中的一个像素单位。`window.devicePixelRatio`
+
+2 的像素比意味着需要渲染 4 倍的像素（4个物理像素对应1个逻辑像素），3 的像素比意味着需要渲染 9 倍的像素。
+
+防止在高像素比的设备出现性能问题。可以放在resize事件中，如果用户使用两块屏幕并且像素比不同时，确保更好的渲染质量
+
+```js
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+```
+
+### Fullscreen
+
+`document.fullscreenElement` 是否全屏
+
+`canvas.requestFullscreen() `将某个dom全屏，只显示那一个dom
+
+`document.exitFullscreen()` 退出全屏，退出是文档级的，所以用
+
+但是在 Safari 上无效
+
+```js
+// 双击进入全屏，退出
+window.addEventListener('dblclick', () => {
+
+    if (!document.fullscreenElement) {
+        console.log('go fullscreen')
+        canvas.requestFullscreen()
+    } else {
+        console.log('leave fullscreen')
+        document.exitFullscreen()
+    }
+})
+```
+
+```js
+window.addEventListener('dblclick', () => {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+    if (!fullscreenElement) {
+        if (canvas.requestFullscreen()) {
+            canvas.requestFullscreen()
+        } else if (canvas.webkitRequestFullscreen()) {
+            canvas.webkitRequestFullscreen()
+        }
+    } else {
+        if (document.exitFullscreen()) {
+            document.exitFullscreen()
+        } else if (document.webkitExitFullscreen()) {
+            document.webkitExitFullscreen()
+        }
+    }
+})
+```
+
+## Geometry
+
+### 几何体
+
+几何体是由顶点构成，每个顶点都有位置数据（position, UV, normal, ...），3个顶点连接成三角形，再构成面
+
+- [BoxGeometry](https://threejs.org/docs/#api/en/geometries/BoxGeometry) 立方体
+- [PlaneGeometry](https://threejs.org/docs/#api/en/geometries/PlaneGeometry) 平面
+- [CircleGeometry](https://threejs.org/docs/#api/en/geometries/CircleGeometry) 圆面
+- [ConeGeometry](https://threejs.org/docs/#api/en/geometries/ConeGeometry) 圆锥
+- [CylinderGeometry](https://threejs.org/docs/#api/en/geometries/CylinderGeometry) 圆柱
+- [RingGeometry](https://threejs.org/docs/#api/en/geometries/RingGeometry) 环
+- [TorusGeometry](https://threejs.org/docs/#api/en/geometries/TorusGeometry) 3d环（戒指）
+- [TorusKnotGeometry](https://threejs.org/docs/#api/en/geometries/TorusKnotGeometry) 环面结
+- [DodecahedronGeometry](https://threejs.org/docs/#api/en/geometries/DodecahedronGeometry) 十二面体
+- [OctahedronGeometry](https://threejs.org/docs/#api/en/geometries/OctahedronGeometry) 八面体
+- [TetrahedronGeometry](https://threejs.org/docs/#api/en/geometries/TetrahedronGeometry) 四面体
+- [IcosahedronGeometry](https://threejs.org/docs/#api/en/geometries/IcosahedronGeometry) 二十面体
+- [SphereGeometry](https://threejs.org/docs/#api/en/geometries/SphereGeometry) 球
+- [ShapeGeometry](https://threejs.org/docs/#api/en/geometries/ShapeGeometry) 心形（平面）
+- [TubeGeometry](https://threejs.org/docs/#api/en/geometries/TubeGeometry) 管道
+- [ExtrudeGeometry](https://threejs.org/docs/#api/en/geometries/ExtrudeGeometry) 
+- [LatheGeometry](https://threejs.org/docs/#api/en/geometries/LatheGeometry) 车床？
+- [TextGeometry](https://threejs.org/docs/?q=textge#examples/en/geometries/TextGeometry) 3d文字
+
+### BoxGeometry
+
+以`BoxGeometry`为例，
+
+```js
+const geometry = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2)
+```
+
+- `width`: `x`轴的尺寸
+- `height`:`y`轴的尺寸
+- `depth`: `z`轴的尺寸
+- `widthSegments`: `x`轴上的分段
+- `heightSegments`:  `y` 轴上的分段
+- `depthSegments`:  `z` 轴上的分段
+
+分段对应于构成面部的三角形数量认情况下，它是 `1`，这意味着每个面只有 2 个三角形。如果将细分设置为 `2`，则每个面最终将有 8 个三角形。`2*Math.pow(n)`。更多的分段意味着可以做出更平滑的面，或者不同高度的地形
+
+将 `wireframe： true` 添加到材质中。线框将显示分隔每个三角形的线条：
+
+```javascript
+const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
+```
+
+BufferGeometry
+
+创建自定义的几何体，通过类型化数组创建
+
+```js
+const positionsArray = new Float32Array([
+    0, 0, 0, // Vertex 1 x, y, z
+    0, 1, 0, // Vertex 2
+    1, 0, 0 // Vertex 3
+])
+const positionsAttribute = new THREE.BufferAttribute(positionsArray, 3)
+const geometry = new THREE.BufferGeometry()
+geometry.setAttribute('position', positionsAttribute)
+```
+
+```js
+const geometry = new THREE.BufferGeometry() // 创建一个空的几何体对象
+const count = 50 // 三角形数量
+const positionsArray = new Float32Array(count * 3 * 3) // 创建位置数组 150个点 3个数字为一个顶点
+for (let i = 0; i < count * 3 * 3; i++) {
+    positionsArray[i] = Math.random() - 0.5
+}
+const positionsAttribute = new THREE.BufferAttribute(positionsArray, 3) // 每个顶点接受3个数字
+geometry.setAttribute('position', positionsAttribute) // 将位置数据添加到几何体对象
+// 三角会共享顶点，通过setIndex优化
+geometry.dispose(); // 移除几何体
+```
+
+## Debug UI
+
+用于调试参数，以`dat.gui`为例
+
+```js
+npm i --save dat.gui
+
+import * as dat from 'dat.gui'
+const gui = new dat.GUI() // 实例化dat.gui
+```
+
+通过`gui.add()`添加需要控制的对象属性，必须接受一个对象
+
+- **Range** 数值范围
+
+  ```js
+  const params = { size: 10 };
+  // 基础用法
+  gui.add(params, 'size'); 
+  // 带范围限制的滑块
+  gui.add(params, 'size', 0, 100, 1); // min=0, max=100, step=1
+  ```
+
+- **Checkbox** 复选框 (`true` or `false`)
+
+  ```js
+  const params = { visible: true };
+  gui.add(params, 'visible'); // 生成复选框
+  ```
+
+- **Text** 文本框
+
+  ```js
+  const params = { name: 'Cube' };
+  gui.add(params, 'name'); // 生成文本框
+  ```
+
+- **Select** 下拉选框
+
+  ```js
+  const params = { type: 'sphere' };
+  
+  // 传入选项数组
+  gui.add(params, 'type', ['sphere', 'cube', 'cylinder']); // 生成下拉菜单
+  ```
+
+- **Color** 颜色选择
+
+  ```js
+  const params = { color: '#ff0000' };
+  // 需使用 addColor 方法
+  gui.addColor(params, 'color'); // 生成颜色选择器
+  ```
+
+- **Button** 点击按钮
+
+  ```js
+  import gsap from 'gsap'
+  let debugObject = {
+      spin: () => {
+          gsap.to(mesh.rotation, {
+              duration: 1,
+              y: mesh.rotation.y + Math.PI * 2 // mesh 绕Y轴旋转一周 2PI
+          })
+      }
+  }
+  gui.add(debugObject, 'spin') // 添加一个按钮，点击后执行spin方法
+  ```
+
+- **Folder** 文件
+
+基本用法
+
+```js
+import * as dat from 'dat.gui'
+const gui = new dat.GUI() // 实例化dat.gui
+gui.add(mesh.position, 'y', -3, 3, 0.01) // 添加一个y轴的控制器，范围是-3到3，步长是0.01
+gui.add(mesh.position, 'y').min(-3).max(3).step(0.01).name('y轴') // 与上面的代码等价，并取别名
+
+gui.add(mesh, 'visible') // 控制mesh的可见性，自动识别出现checkbox
+gui.add(material, 'wireframe') // 控制材质的wireframe(线框)属性
+```
+
+通过`onChange(...)`监听控制器变化，` material.color.set(...)`修改材质的颜色
+
+```js
+let debugObject = {
+    color: 0xff0000,
+}
+gui.addColor(debugObject, 'color').onChange(() => {
+    material.color.set(debugObject.color)
+})
+```
+
+## Texture
+
+纹理
+
+### PBR (Physically Based Rendering)
+
+PBR是基于物理的渲染，主要是金属感和粗糙度
+
+### TextureLoader
+
+```js
+const texture = new THREE.TextureLoader().load(
+  url,          // 图像路径（必填）
+  onLoad,       // 加载成功回调（可选）
+  onProgress,   // 加载进度回调（可选）
+  onError       // 加载失败回调（可选）
+);
+```
+
+| 参数             | 类型       | 说明                                                         |
+| :--------------- | :--------- | :----------------------------------------------------------- |
+| **`url`**        | `string`   | 图像资源的 URL 路径（支持相对/绝对路径）                     |
+| **`onLoad`**     | `Function` | 加载成功时触发，参数为加载完成的 `THREE.Texture` 对象        |
+| **`onProgress`** | `Function` | 加载进度回调，参数为 `XMLHttpRequest` 实例（含 `loaded` 和 `total` 字节） |
+| **`onError`**    | `Function` | 加载失败时触发，参数为错误信息                               |
+
+```js
+const loader = new THREE.TextureLoader();
+
+const texture = loader.load(
+  'textures/metal.png',
+  (texture) => { 
+    console.log('纹理加载完成', texture); 
+    material.needsUpdate = true; // 若动态加载需手动更新材质
+  },
+  (xhr) => {
+    console.log(`${(xhr.loaded / xhr.total * 100)}% 已加载`);
+  },
+  (err) => {
+    console.error('加载失败:', err);
+  }
+);
+// 将纹理应用到材质
+const material = new THREE.MeshBasicMaterial({ map: texture });
+const cube = new THREE.Mesh(new THREE.BoxGeometry(), material);
+scene.add(cube);
+```
+
+对纹理进行操作
+
+```js
+textrue.repeat.x = 2 // 水平方向重复两次
+textrue.repeat.y = 3 // 垂直方向重复三次
+textrue.wrapS = THREE.RepeatWrapping // 水平方向重复
+textrue.wrapT = THREE.MirroredRepeatWrapping // 垂直方向镜像重复 
+
+textrue.offset.x = 0.5 // x轴偏移0.5
+textrue.offset.y = 0.5 // y轴偏移0.5
+
+textrue.rotation = Math.PI / 4 // 旋转45度
+// 旋转中心点 默认(0,0) 左下角
+textrue.center.x = 0.5 
+textrue.center.y = 0.5 
+```
+
+
+
+### Texture Mapping
+
+纹理映射，GPU会生成从原本大小的纹理到宽高为1/2,1/4，直到`1x1`大小的映射图（总大小为原来的2倍）。GPU会根据缩放程度，选择加载合适的纹理图
+
+| **过滤类型**             | **触发场景**                                                 | **典型问题**                       |
+| :----------------------- | :----------------------------------------------------------- | :--------------------------------- |
+| **Minification Filter**  | 当纹理被**缩小**（纹理分辨率 > 屏幕像素分辨率）时使用。 （例如：远距离观察高分辨率贴图） | 锯齿（Aliasing）、闪烁（Moire）    |
+| **Magnification Filter** | 当纹理被**放大**（纹理分辨率 < 屏幕像素像素分辨率）时使用。 （例如：近距离观察低分辨率贴图） | 模糊（Blur）、马赛克（Pixelation） |
+
+```js
+const texture = new THREE.TextureLoader().load('texture.jpg');
+
+// 缩小过滤器配置（解决远处纹理问题）
+texture.minFilter = THREE.LinearMipmapLinearFilter; // 三线性过滤（默认值）
+// texture.minFilter = THREE.NearestFilter; // 高性能，低质量
+
+// 放大过滤器配置（解决近处纹理问题）
+texture.magFilter = THREE.LinearFilter; // 双线性过滤（默认值）
+// texture.magFilter = THREE.NearestFilter; // 锐利边缘（如像素风格）
+
+texture.needsUpdate = true; // 使配置生效
+```
+
+为了节约资源，无需缩放的贴图，可以不生成mipmaps
+
+```js
+Texture.generateMipmaps = false // 不生成mipmaps
+```
+
