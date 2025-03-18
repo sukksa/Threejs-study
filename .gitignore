@@ -32,7 +32,6 @@ build/             # 构建目录
 11-materials-true/
 
 # ========== 依赖目录 ==========
-node_modules/      # 匹配所有层级的node_modules目录（已存在）
 **/node_modules/   # 另一种等效写法（二选一即可）
 **/package-lock.json
 
