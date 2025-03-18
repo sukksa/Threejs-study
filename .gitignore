@@ -29,11 +29,15 @@ build/             # 构建目录
 09-debug-ui/node_modules/
 10-textures/node_modules/
 11-materials/node_modules/
+11-materials-true/
+
 # ========== 依赖目录 ==========
 node_modules/      # 匹配所有层级的node_modules目录（已存在）
 **/node_modules/   # 另一种等效写法（二选一即可）
+**/package-lock.json
 
 # 删除以下这些具体路径的冗余规则（已存在）
 # 05-animations/node_modules/
 # 07-fullscreen-and-resizing/node_modules/
 # 08-geometries
+.idea/workspace.xml

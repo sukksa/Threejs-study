@@ -592,7 +592,7 @@ gui.addColor(debugObject, 'color').onChange(() => {
 
 ### PBR (Physically Based Rendering)
 
-PBR是基于物理的渲染，主要是金属感和粗糙度
+PBR是基于物理的渲染，偏向现实中的物体，主要是金属感`metalness`和粗糙度`roughness`
 
 ### TextureLoader
 
