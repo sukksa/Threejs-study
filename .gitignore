@@ -34,6 +34,8 @@ build/             # 构建目录
 # ========== 依赖目录 ==========
 **/node_modules/   # 另一种等效写法（二选一即可）
 **/package-lock.json
+**/node_modules
+package-lock.json
 
 # 删除以下这些具体路径的冗余规则（已存在）
 # 05-animations/node_modules/

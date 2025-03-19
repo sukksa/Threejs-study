@@ -682,3 +682,146 @@ texture.needsUpdate = true; // 使配置生效
 Texture.generateMipmaps = false // 不生成mipmaps
 ```
 
+## Material
+
+材质
+
+### MeshBasicMaterial
+
+一种基础材质，它不考虑光照影响，直接以纯色或贴图渲染物体表面。
+
+| 参数名            | 类型            | 默认值      | 说明                                                         |
+| :---------------- | :-------------- | :---------- | :----------------------------------------------------------- |
+| **`color`**       | `THREE.Color`   | `0xffffff`  | 材质颜色（十六进制值或CSS颜色字符串）                        |
+| **`wireframe`**   | `boolean`       | `false`     | 是否以线框模式渲染（显示为网格线）                           |
+| **`opacity`**     | `number`        | `1`         | 透明度（0.0 完全透明 ~ 1.0 不透明），需设置 `transparent: true` 生效 |
+| **`transparent`** | `boolean`       | `false`     | 是否启用透明度                                               |
+| **`map`**         | `THREE.Texture` | `null`      | 表面贴图（漫反射颜色纹理）                                   |
+| **`alphaMap`**    | `THREE.Texture` | `null`      | 透明度贴图（控制各区域透明度，需开启 `transparent`）         |
+| **`side`**        | `THREE.Side`    | `FrontSide` | 渲染面：`FrontSide`（前）、`BackSide`（后）、`DoubleSide`（双面） |
+| **`fog`**         | `boolean`       | `true`      | 是否受场景雾效影响                                           |
+| **`depthTest`**   | `boolean`       | `true`      | 是否启用深度测试（避免被其他物体遮挡）                       |
+| **`depthWrite`**  | `boolean`       | `true`      | 是否写入深度缓冲区                                           |
+| **`visible`**     | `boolean`       | `true`      | 材质是否可见                                                 |
+
+- side
+
+  ```js
+  // 设置内外哪面可见
+  material.side = THREE.FrontSide // 默认
+  material.side = THREE.BackSide	// 仅渲染背面（适用于镜面效果）
+  material.side = THREE.DoubleSide // 两面可见, 双面渲染（适用于透明物体）
+  ```
+
+- transparent
+
+  是否透明，`opacity` `alphaMap `需要设为`true`
+
+  ```js
+  material.transparent = true 
+  material.opacity = 0.5
+  material.alphaMap = doorColorTexture
+  ```
+
+### MeshNormalMaterial
+
+一种基于物体表面法线方向（Normal）进行颜色映射的材质，常用于调试模型或实现特定的视觉效果。物体颜色由法线决定
+
+法线是垂直于顶点向外的向量
+
+| 参数              | 类型      | 默认值      | 说明                                                         |
+| :---------------- | :-------- | :---------- | :----------------------------------------------------------- |
+| **`wireframe`**   | `boolean` | `false`     | 线框模式显示模型结构                                         |
+| **`flatShading`** | `boolean` | `false`     | 平面着色（每个面的法线相同）vs 平滑着色（顶点法线插值）      |
+| **`opacity`**     | `number`  | `1`         | 透明度（0.0 完全透明 ~ 1.0 不透明）                          |
+| **`transparent`** | `boolean` | `false`     | 是否允许透明（需与 `opacity` 配合使用）                      |
+| **`side`**        | `enum`    | `FrontSide` | 定义渲染的面：`THREE.FrontSide`（前）、`BackSide`（后）、`DoubleSide`（双面） |
+
+- **`flatShading: true`**
+
+  - **法线来源**：每个三角形面片的法线（Face Normal）
+  - **计算方式**：取三角形三个顶点的平均法线，整个面片使用同一法线值
+  - **颜色表现**：面片内部颜色一致，面与面交界处颜色突变
+
+- **`flatShading: false`**
+
+  - **法线来源**：顶点的法线（Vertex Normal）
+  - **计算方式**：在三角形内部插值顶点法线，每个像素的法线独立计算
+  - **颜色表现**：颜色平滑过渡，隐藏面片边界
+
+  
+
+  ```js
+  material.flatShading = true
+  ```
+
+### MeshMatcapMaterial
+
+一种基于 **预渲染环境光照（Material Capture，Matcap）** 的材质，它通过纹理贴图模拟复杂的光照和材质反射效果，无需实际光源即可实现立体感。
+
+| 参数                    | 类型            | 默认值     | 说明                                           |
+| :---------------------- | :-------------- | :--------- | :--------------------------------------------- |
+| **`matcap`**            | `THREE.Texture` | `null`     | Matcap 贴图（必须提供）                        |
+| **`color`**             | `THREE.Color`   | `0xffffff` | 材质基础颜色，与 Matcap 颜色相乘               |
+| **`bumpMap`**           | `THREE.Texture` | `null`     | 凹凸贴图（灰度图，影响表面凹凸感）             |
+| **`bumpScale`**         | `number`        | `1`        | 凹凸强度（正负值控制凹凸方向）                 |
+| **`normalMap`**         | `THREE.Texture` | `null`     | 法线贴图（影响表面细节光照方向）               |
+| **`normalScale`**       | `THREE.Vector2` | `(1,1)`    | 法线贴图强度（x/y 对应 UV 方向）               |
+| **`displacementMap`**   | `THREE.Texture` | `null`     | 置换贴图（实际改变顶点位置，需足够细分几何体） |
+| **`displacementScale`** | `number`        | `1`        | 置换强度                                       |
+| **`flatShading`**       | `boolean`       | `false`    | 是否启用平面着色（面片法线 vs 顶点法线插值）   |
+
+- matcp
+
+  将模型法线方向映射到 Matcap 贴图的 UV 坐标，通过贴图像素颜色模拟光照反射。贴图通常为 **圆形渐变色图**，中心代表法线朝向摄像机（Z+方向），边缘代表法线朝向侧面。
+
+### MeshDepthMaterial
+
+一种基于物体到相机距离（深度）渲染的材质，其颜色由物体表面相对于相机的远近决定。它常用于 **深度可视化**、**阴影映射** 和 **后处理效果**（如 SSAO）。
+
+**近点白色，远点是黑色。用于制作雾效和预处理**
+
+| 参数                    | 类型/枚举            | 默认值             | 说明                                                         |
+| :---------------------- | :------------------- | :----------------- | :----------------------------------------------------------- |
+| **`depthPacking`**      | `THREE.DepthPacking` | `RGBADepthPacking` | 深度数据编码方式： `BasicDepthPacking`（32位）或 `RGBADepthPacking`（RGBA四通道8位存储） |
+| **`alphaTest`**         | `number`             | `0`                | 透明度测试阈值（0.0~1.0），低于此值的像素被丢弃              |
+| **`displacementMap`**   | `THREE.Texture`      | `null`             | 置换贴图（灰度图，实际修改顶点位置）                         |
+| **`displacementScale`** | `number`             | `1`                | 置换强度（正负值控制凹凸方向）                               |
+| **`displacementBias`**  | `number`             | `0`                | 置换基准偏移量                                               |
+| **`wireframe`**         | `boolean`            | `false`            | 是否以线框模式渲染                                           |
+
+### MeshLambertMaterial
+
+一种基于 **Lambert 光照模型** 的材质，适用于表现**非光泽表面**的物体（如木材、布料、哑光塑料等）。漫反射，确保场景添加了光源才能显示
+
+| 参数          | 类型            | 作用                                           |
+| :------------ | :-------------- | :--------------------------------------------- |
+| `color`       | `THREE.Color`   | 材质的基础颜色（默认 `0xffffff`，白色）        |
+| `map`         | `THREE.Texture` | 漫反射贴图，覆盖基础颜色                       |
+| `emissive`    | `THREE.Color`   | 自发光颜色（使物体在无光源时可见）             |
+| `emissiveMap` | `THREE.Texture` | 自发光贴图                                     |
+| `envMap`      | `THREE.Texture` | 环境贴图（模拟反射周围环境，但不同于镜面反射） |
+| `wireframe`   | `Boolean`       | 是否以线框模式渲染（默认 `false`）             |
+
+```js
+// 1. 创建材质
+const material = new THREE.MeshLambertMaterial({
+  color: 0x00ff00,     // 基础颜色（十六进制）
+  map: textureLoader.load('path/to/diffuse.jpg'), // 漫反射贴图
+  emissive: 0x444444,  // 自发光颜色
+  wireframe: false      // 是否显示为线框
+});
+
+// 2. 创建几何体并应用材质
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1),
+  material
+);
+
+// 3. 确保场景中添加光源
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // 环境光
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // 平行光
+scene.add(ambientLight, directionalLight);
+```
+
+### MeshPhongMaterial
