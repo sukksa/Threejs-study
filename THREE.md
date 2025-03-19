@@ -825,3 +825,38 @@ scene.add(ambientLight, directionalLight);
 ```
 
 ### MeshPhongMaterial
+
+一种基于 **Phong 光照模型** 的材质，支持高光，适用于表现**光泽表面**的物体（如塑料、金属、玻璃等）。
+
+| 参数          | 类型            | 作用                                                |
+| :------------ | :-------------- | :-------------------------------------------------- |
+| `specular`    | `THREE.Color`   | 镜面高光的颜色（默认 `0x111111`，暗灰色）           |
+| `shininess`   | `Number`        | 高光强度，值越大高光范围越小、亮度越高（默认 `30`） |
+| `specularMap` | `THREE.Texture` | 高光贴图（控制不同区域的高光强度）                  |
+| `normalMap`   | `THREE.Texture` | 法线贴图（模拟表面凹凸细节）                        |
+| `envMap`      | `THREE.Texture` | 环境贴图（模拟环境反射，需设置 `combine` 属性）     |
+
+```js
+import * as THREE from 'three';
+
+// 1. 创建材质
+const material = new THREE.MeshPhongMaterial({
+  color: 0x00ff00,       // 基础颜色
+  specular: 0xffffff,    // 高光颜色（默认白色）
+  shininess: 100,        // 高光强度（范围 0-1000，默认 30）
+  map: textureLoader.load('path/to/diffuse.jpg'), // 漫反射贴图
+  normalMap: textureLoader.load('path/to/normal.jpg') // 法线贴图
+});
+
+// 2. 创建几何体并应用材质
+const sphere = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 32, 32),
+  material
+);
+
+// 3. 添加光源（必须）
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+directionalLight.position.set(5, 5, 5);
+scene.add(directionalLight);
+```
+

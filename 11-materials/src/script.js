@@ -43,14 +43,14 @@ const sizes = {
 // // material.color = new THREE.Color('red')
 // // material.wireframe = true
 
-// // material.opacity = 0.5
-// material.transparent = true // alphaMap opacity 都需要设置为true
+// material.transparent = true 
+// material.opacity = 0.5
 // material.alphaMap = doorColorTexture
 
-// // 设置内外哪面可见
-// // material.side = THREE.FrontSide // 默认
+// 设置内外哪面可见
+// material.side = THREE.FrontSide // 默认
 // material.side = THREE.BackSide
-// // material.side = THREE.DoubleSide // 两面可见
+// material.side = THREE.DoubleSide // 两面可见
 
 // MeshNormalMaterial
 // const material = new THREE.MeshNormalMaterial()
