@@ -10,7 +10,9 @@ const gui = new dat.GUI()
 const textureLoader = new THREE.TextureLoader()
 const doorColorTexture = textureLoader.load('/textures/door/color.jpg')
 const doorAlphaTexture = textureLoader.load('/textures/door/alpha.jpg')
-const doorAmbientOcclusionTexture = textureLoader.load('/textures/door/ambientOcclusion.jpg')
+const doorAmbientOcclusionTexture = textureLoader.load('/textures/door/ambientOcclusion.jpg', () => {
+    console.log('loaded');
+})
 const doorHeightTexture = textureLoader.load('/textures/door/height.jpg')
 const doorMetalnessTexture = textureLoader.load('/textures/door/metalness.jpg')
 const doorRoughnessTexture = textureLoader.load('/textures/door/roughness.jpg')
@@ -77,28 +79,53 @@ const sizes = {
 
 // MeshStandardMaterial 类似THREE.MeshPhongMaterial，MeshLambMaterial，支持光照
 // 算法更逼真，遵循物理渲染（PBR)
+// const material = new THREE.MeshStandardMaterial()
+// material.metalness = 0.2
+// material.roughness = 0.2
+// material.map = doorColorTexture
+
+// // aoMap  环境遮挡贴图，增加缝隙的阴影，增加细节
+// material.aoMap = doorAmbientOcclusionTexture
+// material.aoMapIntensity = 1 // 环境遮挡贴图强度
+
+
+// material.displacementMap = doorHeightTexture
+// material.displacementScale = 0.1
+// // material.displacementBias = 0.5
+// material.metalnessMap = doorMetalnessTexture
+// material.roughnessMap = doorRoughnessTexture
+
+// material.normalMap = doorNormalTexture
+// material.normalScale.set(1, 1)
+
+// material.transparent = true
+// material.alphaMap = doorAlphaTexture
+// // material.wireframe = true
+// console.log(material);
+
+
+
 const material = new THREE.MeshStandardMaterial()
-material.metalness = 0.45
-material.roughness = 0.65
-material.map = doorColorTexture
-
-// aoMap  环境遮挡贴图，环境遮挡贴图是物体周围环境光对物体的遮挡程度，物体越靠前，环境遮挡越小，物体越靠后，环境遮挡越大
-
-gui.add(material, 'metalness').min(0).max(1).step(0.0001)
-gui.add(material, 'roughness').min(0).max(1).step(0.0001)
+material.metalness = 0.7
+material.roughness = 0.2
 
 const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 16, 16),
+    new THREE.SphereGeometry(0.5, 64, 64),
     material
 )
 sphere.position.x = -1.5
+sphere.geometry.setAttribute('uv2', new THREE.BufferAttribute(sphere.geometry.attributes.uv.array, 2))
+
 
 scene.add(new THREE.AxesHelper(1))
 const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(1, 1),
+    new THREE.PlaneGeometry(1, 1, 100, 100),
     material
 )
-plane.geometry.setAttribute('uv2', new THREE.BufferAttribute())
+
+
+plane.geometry.setAttribute('uv2', plane.geometry.getAttribute('uv').clone())
+console.log(plane.geometry.attributes);
 
 const torus = new THREE.Mesh(
     new THREE.TorusGeometry(0.3, 0.2, 16, 32),
@@ -106,7 +133,10 @@ const torus = new THREE.Mesh(
 )
 torus.position.x = 1.5
 scene.add(sphere, plane, torus)
-
+gui.add(material, 'metalness').min(0).max(1).step(0.0001)
+gui.add(material, 'roughness').min(0).max(1).step(0.0001)
+// gui.add(material, 'aoMapIntensity').min(0).max(10).step(0.01)
+// gui.add(material, 'displacementScale').min(-1).max(1).step(0.01)
 // Light
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
 // scene.add(ambientLight)

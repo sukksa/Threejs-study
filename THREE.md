@@ -860,3 +860,132 @@ directionalLight.position.set(5, 5, 5);
 scene.add(directionalLight);
 ```
 
+### MeshToonMaterial
+
+一种专为 **卡通风格渲染（Toon Shading/Cel Shading）** 设计的材质，通过色阶化的光照效果模拟手绘或动画风格。
+
+| **参数名**               | **类型**        | **默认值**        | **说明**                                                     |
+| :----------------------- | :-------------- | :---------------- | :----------------------------------------------------------- |
+| **`color`**              | `THREE.Color`   | `0xffffff`        | 基础颜色（十六进制或 CSS 颜色字符串）                        |
+| **`gradientMap`**        | `THREE.Texture` | `null`            | 渐变贴图（定义颜色阶跃，通常为 3-4 色阶的横向渐变色带）      |
+| **`shininess`**          | `number`        | `30`              | 高光区域大小（仅在与 `specular` 结合时生效）                 |
+| **`specular`**           | `THREE.Color`   | `0x111111`        | 高光颜色（需设置 `shininess` > 0）                           |
+| **`map`**                | `THREE.Texture` | `null`            | 基础颜色贴图（覆盖 `color`）                                 |
+| **`normalMap`**          | `THREE.Texture` | `null`            | 法线贴图（模拟表面凹凸细节）                                 |
+| **`normalScale`**        | `THREE.Vector2` | `(1, 1)`          | 法线贴图强度（控制凹凸效果）                                 |
+| **`alphaMap`**           | `THREE.Texture` | `null`            | 透明度贴图（灰度图，需开启 `transparent`）                   |
+| **`transparent`**        | `boolean`       | `false`           | 是否启用透明度（需与 `alphaMap` 或 `opacity` 配合）          |
+| **`opacity`**            | `number`        | `1.0`             | 整体透明度（`0.0` 完全透明 ~ `1.0` 不透明）                  |
+| **`wireframe`**          | `boolean`       | `false`           | 是否以线框模式渲染                                           |
+| **`wireframeLinewidth`** | `number`        | `1`               | 线宽（可能受硬件限制）                                       |
+| **`side`**               | `THREE.Side`    | `THREE.FrontSide` | 渲染面：`FrontSide`（仅正面）、`BackSide`（仅背面）、`DoubleSide`（双面） |
+
+### MeshStandardMaterial
+
+一种基于物理渲染（PBR）的材质，它通过 **金属度（Metalness）** 和 **粗糙度（Roughness）** 参数模拟真实世界的光照反射行为，能够实现高度逼真的材质效果。
+
+| **参数名**              | **类型**        | **默认值**        | **说明**                                                     |
+| :---------------------- | :-------------- | :---------------- | :----------------------------------------------------------- |
+| **`color`**             | `THREE.Color`   | `0xffffff`        | 基础颜色（十六进制或 CSS 颜色字符串），与 `map` 贴图颜色相乘 |
+| **`metalness`**         | `number`        | `0.5`             | 金属度（`0.0` 非金属，`1.0` 全金属），金属材质反射环境光，非金属漫反射 |
+| **`roughness`**         | `number`        | `0.5`             | 粗糙度（`0.0` 镜面光滑，`1.0` 完全漫反射），控制表面光泽度   |
+| **`envMap`**            | `THREE.Texture` | `null`            | 环境贴图（立方体贴图或 HDR 贴图），用于模拟环境反射和间接光照 |
+| **`map`**               | `THREE.Texture` | `null`            | 漫反射贴图（Albedo），定义表面基础颜色纹理                   |
+| **`metalnessMap`**      | `THREE.Texture` | `null`            | 金属度贴图（灰度图，白色区域为金属，黑色为非金属）           |
+| **`roughnessMap`**      | `THREE.Texture` | `null`            | 粗糙度贴图（灰度图，白色区域更粗糙，黑色更光滑）             |
+| **`normalMap`**         | `THREE.Texture` | `null`            | 法线贴图（RGB 编码法线方向），模拟表面凹凸细节               |
+| **`normalScale`**       | `THREE.Vector2` | `(1, 1)`          | 法线贴图强度（`x` 和 `y` 分量分别控制 UV 方向的凹凸强度）    |
+| **`aoMap`**             | `THREE.Texture` | `null`            | 环境光遮蔽贴图（灰度图，白色无遮蔽，黑色强遮蔽），增强角落阴影。**必须加上环境光** |
+| **`aoMapIntensity`**    | `number`        | `1.0`             | AO 贴图强度，值越大遮蔽效果越明显                            |
+| **`displacementMap`**   | `THREE.Texture` | `null`            | 置换贴图（灰度图），通过顶点位移模拟几何凹凸（需细分几何体） |
+| **`displacementScale`** | `number`        | `1`               | 置换强度，正值凸起，负值凹陷                                 |
+| **`displacementBias`**  | `number`        | `0`               | 置换基准偏移量，控制整体位移基准                             |
+| **`emissive`**          | `THREE.Color`   | `0x000000`        | 自发光颜色（物体主动发出的光色），不受场景光照影响           |
+| **`emissiveIntensity`** | `number`        | `1.0`             | 自发光强度，值越大发光越亮                                   |
+| **`emissiveMap`**       | `THREE.Texture` | `null`            | 自发光贴图（定义各区域发光颜色和强度）                       |
+| **`alphaMap`**          | `THREE.Texture` | `null`            | 透明度贴图（灰度图，黑色完全透明，白色不透明），需开启 `transparent` |
+| **`transparent`**       | `boolean`       | `false`           | 是否启用透明度，需与 `opacity` 或 `alphaMap` 配合使用        |
+| **`opacity`**           | `number`        | `1.0`             | 整体透明度（`0.0` 透明 ~ `1.0` 不透明），需开启 `transparent` |
+| **`side`**              | `THREE.Side`    | `THREE.FrontSide` | 渲染面：`FrontSide`（仅正面）、`BackSide`（仅背面）、`DoubleSide`（双面） |
+
+**PBR 参数控制逻辑**
+
+**1. 金属度（Metalness）**
+
+- **`0.0`**：非金属（如塑料、木材），漫反射为主
+- **`1.0`**：金属（如黄金、铝材），镜面反射为主
+- **中间值**：模拟合金或表面氧化效果
+
+**2. 粗糙度（Roughness）**
+
+- **`0.0`**：镜面反射（光滑表面，如抛光金属）
+- **`1.0`**：完全漫反射（粗糙表面，如混凝土）
+
+**3. 环境贴图（EnvMap）**
+
+- **必须项**：金属材质需要环境贴图才能正确显示反射
+
+- **加载方式**：
+
+  ```js
+  new THREE.CubeTextureLoader()
+    .setPath('textures/cubemap/')
+    .load(['px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg'], (envMap) => {
+      material.envMap = envMap;
+    });
+  ```
+
+**贴图类型与作用**
+
+| 贴图类型           | 作用                                                         | 示例用途               |
+| :----------------- | :----------------------------------------------------------- | :--------------------- |
+| **`map`**          | 基础颜色（Albedo）                                           | 物体表面颜色纹理       |
+| **`metalnessMap`** | 控制各区域金属度（灰度图，白=金属区）                        | 锈蚀金属的局部金属效果 |
+| **`roughnessMap`** | 控制各区域粗糙度（灰度图，白=粗糙区）                        | 磨损表面的粗糙变化     |
+| **`normalMap`**    | 通过法线向量模拟表面凹凸，添加细节，而又不用细分时           | 砖墙、织物纹理细节     |
+| **`aoMap`**        | 模拟环境光遮蔽（Ambient Occlusion）增强角落阴影（**必须加上环境光**） | 提升场景立体感         |
+
+- aoMap
+
+  ```js
+  // aoMap  环境遮挡贴图，增加缝隙的阴影，增加细节，必须加上环境光
+  material.aoMap = ambientTexture
+  material.aoMapIntensity = 1 // 环境遮挡贴图强度
+  plane.geometry.setAttribute('uv2',
+      new THREE.BufferAttribute(plane.geometry.attributes.uv.array, 2))
+  
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
+  scene.add(ambientLight)
+  ```
+
+- displacementMap 
+
+  需要设置多的顶点数量
+
+  ```js
+  const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1,100,100),
+      material
+  )
+  ```
+
+- normalMap
+
+  添加细节，不用大量分段时
+
+  ```js
+  material.normalMap = doorNormalTexture
+  material.normalScale.set(0.5, 0.5)
+  ```
+
+### MeshPhysicalMaterial
+
+### PointsMaterial
+
+粒子特效
+
+## Environment Map
+
+环境贴图是反映场景周围的图像。可以提供场景外的图像，可以用于折射和反射，也能为mesh提供照明
+
+只支持立方体环境贴图
