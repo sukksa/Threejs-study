@@ -588,6 +588,8 @@ gui.addColor(debugObject, 'color').onChange(() => {
 
 ## Texture
 
+[poliigon](https://www.poliigon.com/) [3dtextures](https://3dtextures.me/) [arroway-textures](https://www.arroway-textures.ch/)
+
 纹理
 
 ### PBR (Physically Based Rendering)
@@ -650,8 +652,6 @@ textrue.rotation = Math.PI / 4 // 旋转45度
 textrue.center.x = 0.5 
 textrue.center.y = 0.5 
 ```
-
-
 
 ### Texture Mapping
 
@@ -986,6 +986,87 @@ scene.add(directionalLight);
 
 ## Environment Map
 
+[HDRIHaven](https://polyhaven.com/) 环境贴图素材
+
+[matheowis](https://matheowis.github.io/HDRI-to-CubeMap/) 切分环境贴图
+
 环境贴图是反映场景周围的图像。可以提供场景外的图像，可以用于折射和反射，也能为mesh提供照明
 
 只支持立方体环境贴图
+
+| 参数             | 类型       | 说明                                                    |
+| :--------------- | :--------- | :------------------------------------------------------ |
+| **`urls`**       | `Array`    | **6个URL的数组**，顺序为： `[+x, -x, +y, -y, +z, -z]`   |
+| **`onLoad`**     | `Function` | 加载成功时触发，参数为 `THREE.CubeTexture` 实例         |
+| **`onProgress`** | `Function` | 进度回调，参数为 `event`（含 `loaded` 和 `total` 计数） |
+| **`onError`**    | `Function` | 失败时触发，参数为错误信息                              |
+
+- urls
+
+  | 面名   | 方向           | 对应图片位置         |
+  | :----- | :------------- | :------------------- |
+  | **+X** | 右面（Right）  | 立方体右侧正对观察者 |
+  | **-X** | 左面（Left）   | 立方体左侧正对观察者 |
+  | **+Y** | 顶面（Top）    | 立方体顶部正对观察者 |
+  | **-Y** | 底面（Bottom） | 立方体底部正对观察者 |
+  | **+Z** | 后面（Back）   | 立方体背面正对观察者 |
+  | **-Z** | 前面（Front）  | 立方体正面正对观察者 |
+
+```js
+// 1. 定义六个面的图片路径（顺序必须正确）
+const urls = [
+  'textures/cubemap/px.png', // +X 右面
+  'textures/cubemap/nx.png', // -X 左面
+  'textures/cubemap/py.png', // +Y 顶面
+  'textures/cubemap/ny.png', // -Y 底面
+  'textures/cubemap/pz.png', // +Z 后面
+  'textures/cubemap/nz.png'  // -Z 前面
+];
+
+// 2. 创建加载器并加载
+const loader = new THREE.CubeTextureLoader();
+const texture = loader.load(urls, (cubeTexture) => {
+  // 3. 将立方体贴图设置为场景背景
+  scene.background = cubeTexture;
+
+  // 4. 或用于材质环境反射（如金属球）
+  const material = new THREE.MeshStandardMaterial({
+    metalness: 0.9,
+    roughness: 0.1,
+    envMap: cubeTexture // 应用环境贴图
+  });
+}, undefined, (err) => {
+  console.error('立方体贴图加载失败:', err);
+});
+
+scene.background = cubeTexture // 添加到场景
+```
+
+HDR贴图
+
+```js
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+const hdrLoader = new RGBELoader();
+const hdrTextrue = hdrLoader.load(
+    'textures/environmentMap/2k.hdr',
+    (texture) => {
+        // 设置映射模式（必须！）
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+
+        // 设置为场景环境贴图（影响所有PBR材质）
+        scene.environment = texture;
+
+        // 可选：设置为背景
+        scene.background = texture;
+    },
+    (progress) => {
+        console.log(`加载进度: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
+    },
+    (error) => {
+        console.error('HDR 加载失败:', error);
+    }
+);
+// 或者单独作用
+material.envMap = hdrTextrue
+```
+

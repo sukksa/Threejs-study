@@ -3,11 +3,16 @@ import {
     OrbitControls
 } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as dat from 'dat.gui'
-
+import {
+    RGBELoader
+} from 'three/examples/jsm/loaders/RGBELoader.js';
 // Debug
 const gui = new dat.GUI()
 
 const textureLoader = new THREE.TextureLoader()
+const cubeTextureLoader = new THREE.CubeTextureLoader()
+const hdrLoader = new RGBELoader();
+
 const doorColorTexture = textureLoader.load('/textures/door/color.jpg')
 const doorAlphaTexture = textureLoader.load('/textures/door/alpha.jpg')
 const doorAmbientOcclusionTexture = textureLoader.load('/textures/door/ambientOcclusion.jpg', () => {
@@ -22,6 +27,17 @@ const gradientTextrue = textureLoader.load('/textures/gradients/5.jpg') // 渐�
 gradientTextrue.minFilter = THREE.NearestFilter
 gradientTextrue.magFilter = THREE.NearestFilter
 gradientTextrue.generateMipmaps = false
+
+const environmentMapTextrue = cubeTextureLoader.load([
+    '/textures/bak1/left.jpg', // 正x
+    '/textures/bak1/right.jpg', // 正x
+    '/textures/bak1/top.jpg', // 正x
+    '/textures/bak1/down.jpg', // 正x
+    '/textures/bak1/front.jpg', // 正x
+    '/textures/bak1/back.jpg', // 正x
+])
+
+
 /**
  * Base
  */
@@ -103,11 +119,35 @@ const sizes = {
 // // material.wireframe = true
 // console.log(material);
 
+// 加载 HDR 贴图
+const hdrTextrue = hdrLoader.load(
+    'textures/environmentMap/2k.hdr',
+    (texture) => {
+        // 设置映射模式（必须！）
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+
+        // 设置为场景环境贴图（影响所有PBR材质）
+        // scene.environment = texture;
+
+        // 可选：设置为背景
+        scene.background = texture;
+    },
+    (progress) => {
+        console.log(`加载进度: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
+    },
+    (error) => {
+        console.error('HDR 加载失败:', error);
+    }
+);
 
 
 const material = new THREE.MeshStandardMaterial()
 material.metalness = 0.7
 material.roughness = 0.2
+// material.envMap = environmentMapTextrue
+material.envMap = hdrTextrue
+
+// scene.background = environmentMapTextrue
 
 const sphere = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 64, 64),
