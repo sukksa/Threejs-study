@@ -1070,3 +1070,123 @@ const hdrTextrue = hdrLoader.load(
 material.envMap = hdrTextrue
 ```
 
+## 3D TEXT
+
+### FontLoader
+
+**`FontLoader`** 用于加载 **JSON 格式的字体文件**，并生成可用于创建 3D 文字的几何体（`TextGeometry`）。ttf转换json [Facetype.js](https://gero3.github.io/facetype.js/)
+
+```js
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+const loader = new FontLoader();
+
+loader.load(
+  'fonts/helvetiker_regular.typeface.json', // 字体文件路径
+  (font) => {
+    // 字体加载成功后的回调
+    createText(font);
+  },
+  (progress) => {
+    console.log(`加载进度: ${(progress.loaded / progress.total * 100).toFixed(1)}%`);
+  },
+  (error) => {
+    console.error('字体加载失败:', error);
+  }
+);
+```
+
+### TextGeometry
+
+**`TextGeometry`** 用于生成 **3D 文字几何体**，需配合 `FontLoader` 加载的字体文件。
+
+| **参数**             | **类型**  | **默认值** | **说明**                                       |
+| :------------------- | :-------- | :--------- | :--------------------------------------------- |
+| **`font`**           | `Font`    | 必填       | 通过 `FontLoader` 加载的字体对象               |
+| **`size`**           | `number`  | `100`      | 字号大小（非像素单位，基于场景比例）           |
+| **`height`**         | `number`  | `50`       | 文字厚度（Z轴方向的深度）                      |
+| **`curveSegments`**  | `number`  | `12`       | 曲线分段数（值越高，圆角越平滑，性能消耗越大） |
+| **`bevelEnabled`**   | `boolean` | `false`    | 是否启用倒角（文字边缘斜切效果）               |
+| **`bevelThickness`** | `number`  | `10`       | 倒角深度（从正面到背面的延伸距离）             |
+| **`bevelSize`**      | `number`  | `8`        | 倒角宽度（从边缘向内/外的扩展距离）            |
+| **`bevelOffset`**    | `number`  | `0`        | 倒角起始偏移量（正值向外，负值向内）           |
+| **`bevelSegments`**  | `number`  | `3`        | 倒角分段数（控制倒角平滑度）                   |
+
+```js
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+
+// 1. 加载字体
+const loader = new FontLoader();
+loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
+  
+  // 2. 创建文本几何体
+  const geometry = new TextGeometry('Hello World', {
+    font: font,            // 字体对象
+    size: 5,               // 字号大小（单位：Three.js 单位）
+    height: 2,             // 文字厚度（深度）
+    curveSegments: 12,     // 曲线细分段数
+    bevelEnabled: true,    // 启用倒角
+    bevelThickness: 0.5,   // 倒角深度
+    bevelSize: 0.2         // 倒角大小
+  });
+    textGeometry.center()
+
+    // 因为有bevel，所以不是准确的中心
+    textGeometry.translate(
+        -(textGeometry.boundingBox.max.x - bevelSize) * 0.5,
+        -(textGeometry.boundingBox.max.y - bevelSize) * 0.5,
+        -(textGeometry.boundingBox.max.z - bevelThickness) * 0.5
+    )
+    console.log(textGeometry.boundingBox); // Box3
+    
+  // 3. 创建材质
+  const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+
+  // 4. 生成网格并添加到场景
+  const textMesh = new THREE.Mesh(geometry, material);
+  scene.add(textMesh);
+});
+```
+
+- BoundingBox
+
+  像一个盒子罩住物体，用来描述物体的位置、边界
+
+  实现居中 
+
+  ```js
+  textGeometry.center()
+  //或 因为有bevel，所以不是准确的中心
+  textGeometry.translate(
+      -(textGeometry.boundingBox.max.x - bevelSize) * 0.5,
+      -(textGeometry.boundingBox.max.y - bevelSize) * 0.5,
+      -(textGeometry.boundingBox.max.z - bevelThickness) * 0.5
+  )
+  console.log(textGeometry.boundingBox); // Box3
+  ```
+
+  
+
+## GO Live
+
+将three项目托管到网络上
+
+- Vercel 
+- Netlify 
+- GitHub Pages
+
+### Vercel
+
+[vercel](https://vercel.com/) 在package.json添加一个名为 `“deploy”` 的新脚本，执行 `“vercel --prod”` 
+通过 `npm run deploy` 运行
+
+```javascript
+{
+  "scripts": {
+    // ...
+    "deploy": "vercel --prod"
+  },
+}
+```
+
+### GitHub Pages
