@@ -42,3 +42,4 @@ package-lock.json
 # 07-fullscreen-and-resizing/node_modules/
 # 08-geometries
 .idea/workspace.xml
+.idea/vcs.xml

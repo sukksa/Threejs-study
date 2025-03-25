@@ -321,6 +321,14 @@ tick()
 
 [OrbitControls](https://threejs.org/docs/examples/en/controls/OrbitControls.html) 轨道控制，左键旋转，右键移动，中键放大
 
+```js
+import {
+    OrbitControls
+} from 'three/examples/jsm/controls/OrbitControls.js'
+const controls = new OrbitControls(camera, canvas)
+controls.enableDamping = true // 启用阻尼（惯性）
+```
+
 [TrackballControls](https://threejs.org/docs/examples/en/controls/TrackballControls.html) 类似OrbitControls, 但是没有视角限制，可以无休止的旋转
 
 [TransformControls](https://threejs.org/docs/examples/en/controls/TransformControls.html) 变换控件，可以移动物体
@@ -370,6 +378,7 @@ window.addEventListener('resize', () => {
 防止在高像素比的设备出现性能问题。可以放在resize事件中，如果用户使用两块屏幕并且像素比不同时，确保更好的渲染质量
 
 ```js
+// Pixel ratio 最大设为 2
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 ```
 
@@ -684,7 +693,19 @@ Texture.generateMipmaps = false // 不生成mipmaps
 
 ## Material
 
-材质
+### **材质对比**
+
+| 材质类型                 | 光照模型            | 主要特性                                                     | 性能消耗 | 适用场景                           |
+| :----------------------- | :------------------ | :----------------------------------------------------------- | :------- | :--------------------------------- |
+| **MeshBasicMaterial**    | 无光照              | - 仅显示颜色/贴图 - 不支持光照和阴影 - 简单且高性能          | 最低     | 无光照物体、线框模式、背景元素     |
+| **MeshNormalMaterial**   | 法线向量            | - 将法线向量转换为 RGB 颜色 - **无需光照**                   | 低       | 调试法线方向、风格化视觉效果       |
+| **MeshMatcapMaterial**   | Matcap 贴图         | - 通过预烘焙的 Matcap 贴图模拟光照 - 无需实际光源            | 低       | 卡通风格、快速展示、低性能设备     |
+| **MeshDepthMaterial**    | 深度值              | - 将深度信息渲染为颜色 - 用于后处理效果（如雾、景深）        | 低       | 阴影映射、深度可视化               |
+| **MeshLambertMaterial**  | Lambert (漫反射)    | - 支持漫反射光照 - **无镜面高光** - 性能较好                 | 低       | 哑光材质（布料、纸张、无光泽物体） |
+| **MeshPhongMaterial**    | Phong (漫反射+镜面) | - 支持漫反射和镜面高光 - 可设置 `specular` 和 `shininess`    | 中       | 反光材质（塑料、陶瓷、金属）       |
+| **MeshToonMaterial**     | 卡通渲染            | - 使用渐变纹理实现色块化（cel-shading）效果 - 支持高光（风格化） | 中低     | 卡通风格、非写实渲染               |
+| **MeshStandardMaterial** | PBR (物理渲染)      | - 基于物理的渲染（金属度/粗糙度） - 支持环境贴图、法线贴图、AO 贴图等 | 高       | 真实感材质（汽车、石材、皮肤）     |
+| **MeshPhysicalMaterial** | PBR (扩展)          | - 继承自 `StandardMaterial` - 支持透射（`transmission`）、清漆层等 | 最高     | 复杂物理效果（玻璃、液体、宝石）   |
 
 ### MeshBasicMaterial
 
@@ -749,8 +770,6 @@ Texture.generateMipmaps = false // 不生成mipmaps
   - **计算方式**：在三角形内部插值顶点法线，每个像素的法线独立计算
   - **颜色表现**：颜色平滑过渡，隐藏面片边界
 
-  
-
   ```js
   material.flatShading = true
   ```
@@ -789,6 +808,16 @@ Texture.generateMipmaps = false // 不生成mipmaps
 | **`displacementScale`** | `number`             | `1`                | 置换强度（正负值控制凹凸方向）                               |
 | **`displacementBias`**  | `number`             | `0`                | 置换基准偏移量                                               |
 | **`wireframe`**         | `boolean`            | `false`            | 是否以线框模式渲染                                           |
+
+```js
+const geometry = new THREE.SphereGeometry(2, 32, 16);
+const material = new THREE.MeshDepthMaterial({
+  depthPacking: THREE.RGBADepthPacking,
+  wireframe: false
+});
+const mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+```
 
 ### MeshLambertMaterial
 
@@ -979,6 +1008,8 @@ scene.add(directionalLight);
   ```
 
 ### MeshPhysicalMaterial
+
+比MeshStandardMaterial 更贴近现实，性能消耗更高
 
 ### PointsMaterial
 
@@ -1193,6 +1224,18 @@ loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
 
 ## Light
 
+### 光源对比
+
+| 光源类型             | 光照方式                  | 阴影支持 | 衰减 | 性能消耗 |
+| :------------------- | :------------------------ | :------- | :--- | :------- |
+| **AmbientLight**     | 环境光（均匀无方向）      | ❌        | ❌    | 最低     |
+| **DirectionalLight** | 平行光（类似太阳光）      | ✅        | ❌    | 中       |
+| **HemisphereLight**  | 半球光（天空+地面环境光） | ❌        | ❌    | 低       |
+| **PointLight**       | 点光源（向四周发射）      | ✅        | ✅    | 高       |
+| **RectAreaLight**    | 矩形区域光（平面均匀光）  | ✅        | ❌    | 高       |
+| **SpotLight**        | 聚光灯（锥形光束）        | ✅        | ✅    | 最高     |
+| **LightProbe**       | 环境探针（基于图像照明）  | ❌        | ❌    | 中       |
+
 ### AmientLight 
 
 **`AmbientLight`（环境光）** 是一种全局均匀的光源，用于为整个场景提供基础照明。
@@ -1212,28 +1255,184 @@ scene.add(ambientLight);
 
 ### DirectionalLight
 
-
+**`DirectionalLight`（平行光）** 是一种模拟无限远处平行光源（如太阳光）的照明方式，能够投射清晰的阴影和产生明确的明暗对比。
 
 光线从同一个方向来，光线也是平行的。照射到模型上，只会照亮特定的部分。默认会照向场景中心
 
+| **参数/属性**        | **类型**                   | **默认值**             | **说明**                                                    |
+| :------------------- | :------------------------- | :--------------------- | :---------------------------------------------------------- |
+| **`color`**          | `THREE.Color`              | `0xffffff`             | 光色（十六进制或 CSS 颜色）                                 |
+| **`intensity`**      | `number`                   | `1`                    | 光照强度（`0.0` 无光 ~ `1.0` 最大强度）                     |
+| **`position`**       | `THREE.Vector3`            | `(0, 0, 0)`            | 光源位置（世界坐标系）                                      |
+| **`target`**         | `THREE.Object3D`           | `new THREE.Object3D()` | 光线照射目标（默认指向原点）                                |
+| **`shadow.camera`**  | `THREE.OrthographicCamera` | -                      | 控制阴影渲染范围的正交相机                                  |
+| **`shadow.mapSize`** | `{width, height}`          | `512x512`              | 阴影贴图分辨率（值越高越清晰，性能消耗越大）                |
+| **`shadow.radius`**  | `number`                   | `1`                    | 阴影边缘模糊半径（需开启 `renderer.shadowMap.soft = true`） |
+
+```js
+const sunLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+sunLight.position.set(50, 50, 50); // 模拟太阳高角度照射
+sunLight.target.position.set(0, 0, 0); // 照射场景中心
+scene.add(sunLight);
+scene.add(sunLight.target);
+```
+
+directionalLightHelper
+
+```js
+const directionalLightHelper = new THREE.DirectionalLightHelper(directionalLight, 0.2)
+scene.add(directionalLightHelper)
+```
+
+
+
 ### HemisphereLight
 
-半球光，光线像环境光从各个方向来，顶部为一个颜色，底部另一个颜色，中间部分为混合颜色。
+**`HemisphereLight`（半球光）** 是一种模拟自然环境中 **天空与地面颜色渐变** 的全局光源，特别适合户外场景的照明。
+
+光线像环境光从各个方向来，顶部为一个颜色，底部另一个颜色，中间部分为混合颜色。
+
+| **参数/属性**     | **类型**        | **默认值**  | **说明**                                 |
+| :---------------- | :-------------- | :---------- | :--------------------------------------- |
+| **`skyColor`**    | `THREE.Color`   | `0xffffff`  | 天空颜色（来自上方的光照色）             |
+| **`groundColor`** | `THREE.Color`   | `0xffffff`  | 地面颜色（来自下方的反射色）             |
+| **`intensity`**   | `number`        | `1`         | 光照强度（`0.0` 无光 ~ `1.0` 最大强度）  |
+| **`position`**    | `THREE.Vector3` | `(0, 0, 0)` | 光源位置（对光照方向无影响，仅用于调试） |
+
+```js
+// 天花板白光 + 地板暖光
+const roomLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFE4C4, 0.5);
+scene.add(roomLight);
+```
+
+hemisphereLightHelper
+
+```js
+const hemisphereLightHelper = new THREE.HemisphereLightHelper(hemisphereLight, 0.2)
+scene.add(hemisphereLightHelper)
+```
+
+
 
 ### PointLight
+
+**`PointLight`（点光源）** 是一种模拟从一个点向所有方向均匀发散的光源（如灯泡、蜡烛或爆炸效果），支持动态阴影和光线衰减。
+
+| **参数/属性**        | **类型**                  | **默认值**  | **说明**                                                     |
+| :------------------- | :------------------------ | :---------- | :----------------------------------------------------------- |
+| **`color`**          | `THREE.Color`             | `0xffffff`  | 光色（十六进制或 CSS 颜色）                                  |
+| **`intensity`**      | `number`                  | `1`         | 光照强度（`0.0` 无光 ~ `1.0` 最大强度）                      |
+| **`distance`**       | `number`                  | `0`         | 光线照射的最大距离（`0` 表示无限远）                         |
+| **`decay`**          | `number`                  | `2`         | 衰减系数（`0` 无衰减，`1` 物理正确衰减，`2` 默认快速衰减）   |
+| **`position`**       | `THREE.Vector3`           | `(0, 0, 0)` | 光源位置（世界坐标系）                                       |
+| **`shadow.camera`**  | `THREE.PerspectiveCamera` | -           | 控制阴影渲染范围的透视相机                                   |
+| **`shadow.mapSize`** | `{width, height}`         | `512x512`   | 阴影贴图分辨率（建议设为 2 的幂次方，如 512x512、1024x1024） |
+| **`shadow.radius`**  | `number`                  | `1`         | 阴影边缘模糊半径（需开启 `renderer.shadowMap.soft = true`）  |
+
+- 光线衰减公式
+
+  光照强度随距离 `d` 的衰减公式：
+  **`intensity = (light.intensity) / (1 + light.decay * d)`**
+  当 `distance > 0` 时，超过该距离后光照强度为 `0`。
+
+灯泡效果
+
+```js
+const bulbLight = new THREE.PointLight(0xffffee, 1, 20, 1);
+bulbLight.position.set(0, 3, 0);
+bulbLight.castShadow = true;
+scene.add(bulbLight);
+
+// 添加灯泡模型（可选）
+const bulbGeometry = new THREE.SphereGeometry(0.2, 16, 8);
+const bulbMaterial = new THREE.MeshBasicMaterial({ color: 0xffffee });
+const bulbMesh = new THREE.Mesh(bulbGeometry, bulbMaterial);
+bulbLight.add(bulbMesh); // 将灯泡模型附加到光源
+```
+
+pointLightHepler
+
+```js
+const pointLightHelper = new THREE.PointLightHelper(pointLight, 0.2)
+scene.add(pointLightHelper)
+```
 
 
 
 ### RectAreaLight
 
-像摄影棚里的一样，一个平面朝一个方向照射
+**`RectAreaLight`（矩形区域光）** 是一种模拟 **平面矩形区域均匀发光** 的光源（如 LED 面板、窗户透光或软灯箱），能够产生柔和的阴影和自然的光照衰减。像摄影棚里的一样，一个平面朝一个方向照射
+
+不支持阴影，只支持 MeshStandardMaterial 和 MeshPhysicalMaterial 两种材质
+
+| **参数/属性**   | **类型**        | **默认值**            | **说明**                                       |
+| :-------------- | :-------------- | :-------------------- | :--------------------------------------------- |
+| **`color`**     | `THREE.Color`   | `0xffffff`            | 光色（十六进制或 CSS 颜色）                    |
+| **`intensity`** | `number`        | `1`                   | 光照强度（通常需要较高值，如 `5~10`）          |
+| **`width`**     | `number`        | `10`                  | 光源宽度（沿 X 轴）                            |
+| **`height`**    | `number`        | `10`                  | 光源高度（沿 Y 轴）                            |
+| **`position`**  | `THREE.Vector3` | `(0, 0, 0)`           | 光源位置（矩形中心点）                         |
+| **`rotation`**  | `THREE.Euler`   | `(0, 0, 0)`           | 光源旋转角度（调整发光方向）                   |
+| **`power`**     | `number`        | 根据 `intensity` 计算 | 光源总功率（流明），修改时自动更新 `intensity` |
+
+```js
+const rectAreaLight = new THREE.RectAreaLight(0x4e00ff, 2, 1, 1)
+rectAreaLight.position.set(-1.5, 0, 1.5)
+rectAreaLight.lookAt(new THREE.Vector3(0, 0, 0))
+```
+
+
+
+rectAreaLightHelper
+
+```js
+import {
+    RectAreaLightHelper
+} from 'three/examples/jsm/helpers/RectAreaLightHelper.js'
+
+const rectAreaLightHelper = new RectAreaLightHelper(rectAreaLight)
+scene.add(rectAreaLightHelper)
+```
+
+
 
 ### SpotLight
 
 像手电筒一样
+
+
+
+spotLightHelper
+
+```js
+const spotLightHelper = new THREE.SpotLightHelper(spotLight)
+scene.add(spotLightHelper)
+```
+
+
 
 ### baking
 
 光照烘焙，将光线添加到贴图中
 
 LightHelper
+
+## Shadow
+
+当执行一次渲染时，Three.js 将首先为应该投射阴影的每个光源执行一次渲染。这些渲染将模拟光线所看到的，就好像它是摄像机一样。在这些光源渲染期间，[MeshDepthMaterial](https://threejs.org/docs/index.html#api/en/materials/MeshDepthMaterial) 会替换所有网格材质。结果将存储为纹理和命名阴影贴图。您不会直接看到这些阴影贴图，但它们将用于应该接收阴影并投影到几何体上的每种材质上。 [examples](https://threejs.org/examples/webgl_shadowmap_viewer.html)
+
+只有三种光源支持阴影效果 `PointLight` `DirectionalLight` `SpotLight`
+
+### DirectionalLight
+
+
+
+### SpotLight
+
+
+
+### PointLight
+
+
+
+### Baking Shadow
