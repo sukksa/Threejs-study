@@ -1190,3 +1190,50 @@ loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
 ```
 
 ### GitHub Pages
+
+## Light
+
+### AmientLight 
+
+**`AmbientLight`（环境光）** 是一种全局均匀的光源，用于为整个场景提供基础照明。
+
+环境光会从各个方向照射，因此得到均匀的结果。每个部位都是一样的，没有阴影。可以用于模拟光线的反射，看清物体的背面
+
+| 参数名          | 类型          | 默认值     | 说明                                                         |
+| :-------------- | :------------ | :--------- | :----------------------------------------------------------- |
+| **`color`**     | `THREE.Color` | `0xffffff` | 光色（十六进制或CSS颜色字符串，如 `'#ff0000'` 或 `'rgb(255,0,0)'`） |
+| **`intensity`** | `number`      | `1`        | 光照强度（`0.0` 无光 ~ `1.0` 最大强度）                      |
+
+```js
+// 创建白色环境光，强度为0.5
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);	
+```
+
+### DirectionalLight
+
+
+
+光线从同一个方向来，光线也是平行的。照射到模型上，只会照亮特定的部分。默认会照向场景中心
+
+### HemisphereLight
+
+半球光，光线像环境光从各个方向来，顶部为一个颜色，底部另一个颜色，中间部分为混合颜色。
+
+### PointLight
+
+
+
+### RectAreaLight
+
+像摄影棚里的一样，一个平面朝一个方向照射
+
+### SpotLight
+
+像手电筒一样
+
+### baking
+
+光照烘焙，将光线添加到贴图中
+
+LightHelper
