@@ -15,6 +15,9 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+const textrueLoader = new THREE.TextureLoader()
+const bakedShadow = textrueLoader.load('/textures/bakedShadow.jpg')
+const simpleShadow = textrueLoader.load('/textures/simpleShadow.jpg')
 
 /**
  * Lights
@@ -116,6 +119,20 @@ sphere.castShadow = true
 plane.receiveShadow = true
 scene.add(sphere, plane)
 
+
+const sphereShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 1.5),
+    new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        alphaMap: simpleShadow
+    })
+)
+sphereShadow.rotation.x = -Math.PI * 0.5
+sphereShadow.position.y = plane.position.y + 0.001
+scene.add(sphereShadow)
+const axesHelper = new THREE.AxesHelper(2)
+scene.add(axesHelper)
 /**
  * Sizes
  */
@@ -162,7 +179,8 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 // 开启阴影
-renderer.shadowMap.enabled = true
+renderer.shadowMap.enabled = false
+
 // 阴影贴图算法
 renderer.shadowMap.type = THREE.PCFSoftShadowMap // radius 不起作用
 
@@ -173,6 +191,17 @@ const clock = new THREE.Clock()
 
 const tick = () => {
     const elapsedTime = clock.getElapsedTime()
+
+    // Update the sphere
+    // 圆周运动，y轴弹跳
+    sphere.position.x = Math.cos(elapsedTime) * 1.5
+    sphere.position.z = Math.sin(elapsedTime) * 1.5
+    sphere.position.y = Math.abs(Math.sin(elapsedTime * 3))
+
+    // Update the shadow
+    sphereShadow.position.x = sphere.position.x
+    sphereShadow.position.z = sphere.position.z
+    sphereShadow.material.opacity = ((1 - sphere.position.y) / 3)
 
     // Update controls
     controls.update()

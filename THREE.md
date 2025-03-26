@@ -1545,3 +1545,55 @@ scene.add(dirLight.target); // 必须添加目标对象
 
 
 ### Baking Shadow
+1. 直接在平面上选择带阴影的Material
+
+2. 生成带阴影的MeshBasicMaterial，单独显示阴影，并且跟随物体运动
+
+```js
+const material = new THREE.MeshStandardMaterial()
+material.roughness = 0.7
+const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5, 32, 32),
+    material
+)
+
+
+const sphereShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.5, 1.5),
+    new THREE.MeshBasicMaterial({
+        color: 0x000000,
+        transparent: true,
+        alphaMap: simpleShadow
+    })
+)
+sphereShadow.rotation.x = -Math.PI * 0.5
+sphereShadow.position.y = plane.position.y + 0.001 // 不要重叠
+scene.add(sphereShadow)
+
+const clock = new THREE.Clock()
+const tick = () => {
+    const elapsedTime = clock.getElapsedTime()
+
+    // Update the sphere
+    // 圆周运动，y轴弹跳
+    sphere.position.x = Math.cos(elapsedTime) * 1.5
+    sphere.position.z = Math.sin(elapsedTime) * 1.5
+    sphere.position.y = Math.abs(Math.sin(elapsedTime * 3))
+
+    // Update the shadow
+    sphereShadow.position.x = sphere.position.x
+    sphereShadow.position.z = sphere.position.z
+    sphereShadow.material.opacity = ((1 - sphere.position.y) / 3)
+
+    // Update controls
+    controls.update()
+
+    // Render
+    renderer.render(scene, camera)
+
+    // Call tick again on the next frame
+    window.requestAnimationFrame(tick)
+}
+
+tick()
+```
