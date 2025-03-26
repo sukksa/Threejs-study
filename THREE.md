@@ -982,7 +982,7 @@ scene.add(directionalLight);
   material.aoMapIntensity = 1 // 环境遮挡贴图强度
   plane.geometry.setAttribute('uv2',
       new THREE.BufferAttribute(plane.geometry.attributes.uv.array, 2))
-  
+  // plane.geometry.setAttribute('uv2', plane.geometry.getAttribute('uv').clone())
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5)
   scene.add(ambientLight)
   ```
@@ -1398,9 +1398,28 @@ scene.add(rectAreaLightHelper)
 
 ### SpotLight
 
-像手电筒一样
+**`SpotLight`（聚光灯）** 是一种模拟 **定向锥形光束** 的光源（如舞台聚光灯、手电筒或车灯），支持动态阴影和光线衰减。像手电筒一样
 
+| **参数/属性**       | **类型**                  | **默认值**             | **说明**                                                   |
+| :------------------ | :------------------------ | :--------------------- | :--------------------------------------------------------- |
+| **`color`**         | `THREE.Color`             | `0xffffff`             | 光色（十六进制或 CSS 颜色）                                |
+| **`intensity`**     | `number`                  | `1`                    | 光照强度（`0.0` 无光 ~ `1.0` 最大强度）                    |
+| **`distance`**      | `number`                  | `0`                    | 光线照射的最大距离（`0` 表示无限远）                       |
+| **`angle`**         | `number`                  | `Math.PI/3`            | 光束锥角（弧度制，如 `Math.PI/6` = 30度）                  |
+| **`penumbra`**      | `number`                  | `0`                    | 边缘衰减系数（`0` 锐利边缘，`1` 完全柔和）                 |
+| **`decay`**         | `number`                  | `2`                    | 衰减系数（`0` 无衰减，`1` 物理正确衰减，`2` 默认快速衰减） |
+| **`position`**      | `THREE.Vector3`           | `(0, 0, 0)`            | 光源位置（世界坐标系）                                     |
+| **`target`**        | `THREE.Object3D`          | `new THREE.Object3D()` | 光线照射目标（默认指向原点）                               |
+| **`shadow.camera`** | `THREE.PerspectiveCamera` | -                      | 控制阴影渲染范围的透视相机                                 |
 
+```js
+// 参数：颜色，强度，照射距离，锥角（弧度），边缘衰减
+const light = new THREE.SpotLight(0xffffff, 1, 100, Math.PI/6, 0.5, 1);
+light.position.set(5, 5, 5);   // 光源位置
+light.target.position.set(0, 0, 0); // 照射目标
+scene.add(light);
+scene.add(light.target);       // 必须将 target 加入场景
+```
 
 spotLightHelper
 
@@ -1409,13 +1428,34 @@ const spotLightHelper = new THREE.SpotLightHelper(spotLight)
 scene.add(spotLightHelper)
 ```
 
+### light baking
+
+**光照烘焙（Light Baking）** 是一种将场景中的静态光照效果预先计算并存储到纹理中的技术，从而在实时渲染时直接使用这些纹理来模拟复杂的光影效果，避免实时计算开销。
+
+将光线添加到贴图中
+
+```js
+// 加载烘焙的光照贴图
+const lightMap = new THREE.TextureLoader().load('textures/lightmap.jpg');
+
+// 创建材质并应用贴图
+const material = new THREE.MeshStandardMaterial({
+  map: albedoTexture,      // 基础颜色贴图
+  lightMap: lightMap,      // 光照贴图（需 UV2 通道）
+  lightMapIntensity: 1.2   // 调整光照强度
+});
+
+// 将材质应用到模型
+const model = new THREE.Mesh(geometry, material);
+// uv2 通道
+model.geometry.setAttribute('uv2', new THREE.BufferAttribute(model.geometry.attributes.uv.array, 2))
+
+// model.geometry.setAttribute('uv2', plane.geometry.getAttribute('uv').clone())
+
+scene.add(model);
+```
 
 
-### baking
-
-光照烘焙，将光线添加到贴图中
-
-LightHelper
 
 ## Shadow
 
@@ -1423,15 +1463,84 @@ LightHelper
 
 只有三种光源支持阴影效果 `PointLight` `DirectionalLight` `SpotLight`
 
-### DirectionalLight
+```js
+const renderer = new THREE.WebGLRenderer();
+renderer.shadowMap.enabled = true;       // 启用阴影
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // 阴影类型（柔和边缘）
+```
+
+shadowMap.type 阴影贴图算法(shadow map algorithm)
+
+- `THREE.BasicShadowMap`：基础阴影（锯齿明显，性能最好）。
+- `THREE.PCFShadowMap`：抗锯齿阴影（边缘稍柔和）（默认）。
+- `THREE.PCFSoftShadowMap`：更柔和的抗锯齿阴影（推荐）。
+
+启用阴影
+
+```js
+// render
+renderer.shadowMap.enabled = true
+// light
+directionalLight.castShadow = true
+
+// sphere投射阴影
+sphere.castShadow = true
+// plane接收阴影
+plane.receiveShadow = true
+```
 
 
 
-### SpotLight
+### DirectionalLightShadow
+
+**`DirectionalLightShadow`** 是用于管理 **平行光（`DirectionalLight`）阴影** 的类。它通过正交投影相机（`OrthographicCamera`）控制阴影的渲染范围和细节。
+
+| **属性**      | **类型**                   | **默认值** | **说明**                                                     |
+| :------------ | :------------------------- | :--------- | :----------------------------------------------------------- |
+| **`camera`**  | `THREE.OrthographicCamera` | 自动创建   | 控制阴影渲染范围的正交相机                                   |
+| **`mapSize`** | `{ width, height }`        | `512x512`  | 阴影贴图分辨率（值越高越清晰，如 `1024x1024`）               |
+| **`bias`**    | `number`                   | `0`        | 深度偏移（修正自阴影伪影，常见值 `-0.001` ~ `0.001`）        |
+| **`radius`**  | `number`                   | `1`        | 阴影边缘模糊半径，与物体的远近无关，模糊效果都是一致的（需启用软阴影 `renderer.shadowMap.type = THREE.PCFSoftShadowMap`） |
+
+```js
+// 创建平行光
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(5, 5, 5);
+dirLight.castShadow = true; // 必须启用阴影
+
+// 获取阴影控制器
+const shadow = dirLight.shadow;
+
+// 设置阴影贴图分辨率
+shadow.mapSize.width = 1024;
+shadow.mapSize.height = 1024;
+
+// 调整正交相机范围（关键！）
+shadow.camera.left = -10;   // 左边界
+shadow.camera.right = 10;   // 右边界
+shadow.camera.top = 10;     // 上边界
+shadow.camera.bottom = -10; // 下边界
+shadow.camera.near = 0.1;   // 近裁剪面
+shadow.camera.far = 50;     // 远裁剪面
+
+// 优化阴影偏移
+shadow.bias = -0.001;
+
+// 阴影的模糊半径，与物体的远近无关，模糊效果都是一致的
+shadow.radius = 10
+
+// 将光源添加到场景
+scene.add(dirLight);
+scene.add(dirLight.target); // 必须添加目标对象
+```
 
 
 
-### PointLight
+### SpotLightShadow
+
+
+
+### PointLightShadow
 
 
 
