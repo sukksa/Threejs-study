@@ -1534,17 +1534,99 @@ scene.add(dirLight);
 scene.add(dirLight.target); // 必须添加目标对象
 ```
 
+CameraHepler
+
+```js
+const spotLightCameraHepler = new THREE.CameraHelper(spotLight.shadow.camera)
+scene.add(spotLightCameraHepler)
+```
+
 
 
 ### SpotLightShadow
+
+**`SpotLightShadow`** 是管理 **聚光灯（`SpotLight`）阴影** 的类，通过透视投影相机（`PerspectiveCamera`）控制阴影的渲染范围和效果。
+
+| **属性**      | **类型**                  | **默认值** | **说明**                                                     |
+| :------------ | :------------------------ | :--------- | :----------------------------------------------------------- |
+| **`camera`**  | `THREE.PerspectiveCamera` | 自动创建   | 控制阴影渲染范围的透视相机                                   |
+| **`mapSize`** | `{ width, height }`       | `512x512`  | 阴影贴图分辨率（值越高越清晰，如 `1024x1024`）               |
+| **`bias`**    | `number`                  | `0`        | 深度偏移（修正自阴影伪影，常见值 `-0.001` ~ `0.001`）        |
+| **`radius`**  | `number`                  | `1`        | 阴影边缘模糊半径（需启用软阴影 `renderer.shadowMap.type = THREE.PCFSoftShadowMap`） |
+
+```js
+// 创建聚光灯
+const spotLight = new THREE.SpotLight(0xffffff, 1, 100, Math.PI/4, 0.5, 1);
+spotLight.position.set(5, 10, 5);
+spotLight.castShadow = true; // 启用阴影
+
+// 获取阴影控制器
+const shadow = spotLight.shadow;
+
+// 设置阴影贴图分辨率
+shadow.mapSize.width = 1024;
+shadow.mapSize.height = 1024;
+
+// 调整透视相机参数（匹配聚光灯角度和范围）
+shadow.camera.fov = 50;       // 锥角（与聚光灯的 angle 参数一致）
+shadow.camera.near = 0.1;     // 近裁剪面
+shadow.camera.far = 50;       // 远裁剪面（覆盖场景深度）
+
+// 优化阴影偏移和模糊
+shadow.bias = -0.001;
+shadow.radius = 2;            // 边缘模糊
+
+// 将光源和目标添加到场景
+scene.add(spotLight);
+scene.add(spotLight.target);
+```
+
+CameraHepler
+
+```js
+const spotLightCameraHepler = new THREE.CameraHelper(spotLight.shadow.camera) scene.add(spotLightCameraHepler)
+```
 
 
 
 ### PointLightShadow
 
+**`PointLightShadow`** 是管理 **点光源（`PointLight`）阴影** 的类，通过立方体相机（`CubeCamera`）生成六个方向的阴影贴图，模拟全向阴影效果。
+
+| **属性**      | **类型**                    | **默认值** | **说明**                                                     |
+| :------------ | :-------------------------- | :--------- | :----------------------------------------------------------- |
+| **`mapSize`** | `{ width, height }`         | `512x512`  | **单面**阴影贴图分辨率（总消耗：`6 * width * height`）       |
+| **`bias`**    | `number`                    | `0`        | 深度偏移（修正自阴影伪影，常见值 `-0.001` ~ `0.001`）        |
+| **`radius`**  | `number`                    | `1`        | 阴影边缘模糊半径（需启用软阴影 `renderer.shadowMap.type = THREE.PCFSoftShadowMap`） |
+| **`camera`**  | `THREE.PerspectiveCamera[]` | 自动创建   | 6 个透视相机组成的数组，控制各方向阴影范围                   |
+
+```js
+const pointLight = new THREE.PointLight(0xffffff, 1)
+pointLight.position.set(-1, 1, 0)
+pointLight.castShadow = true
+// 因为是向四周发散的所以无法调整视角fov
+pointLight.shadow.mapSize.width = 1024
+pointLight.shadow.mapSize.height = 1024
+// pointLight 本身很小，near可以设置小一点
+pointLight.shadow.camera.near = 0.1
+pointLight.shadow.camera.far = 2
+// scene.add() 前设置
+scene.add(pointLight)
+```
+
+CameraHepler
+
+点光源是像四周发散光，结果cameraHelper显示为一个透视相机，threejs将点光源的六个方向都渲染一次，所以相当于6个透视相机。为什么pointLightCameraHepler会向下呢？大概是最后一次渲染的是bottom
+
+```js
+const pointLightCameraHepler = new THREE.CameraHelper(pointLight.shadow.camera)
+scene.add(pointLightCameraHepler)
+```
+
 
 
 ### Baking Shadow
+
 1. 直接在平面上选择带阴影的Material
 
 2. 生成带阴影的MeshBasicMaterial，单独显示阴影，并且跟随物体运动

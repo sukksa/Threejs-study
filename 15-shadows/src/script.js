@@ -72,7 +72,7 @@ scene.add(spotLight)
 scene.add(spotLight.target)
 
 const spotLightCameraHepler = new THREE.CameraHelper(spotLight.shadow.camera)
-// scene.add(spotLightCameraHepler)
+scene.add(spotLightCameraHepler)
 
 const pointLight = new THREE.PointLight(0xffffff, 1)
 pointLight.position.set(-1, 1, 0)
@@ -88,7 +88,7 @@ scene.add(pointLight)
 
 // 点光源 是像四周发散光，结果cameraHelper是一个透视相机，threejs将点光源的六个方向都渲染一次，所以相当于6个透视相机。为什么pointLightCameraHepler会向下呢？大概是最后一次渲染的是bottom
 const pointLightCameraHepler = new THREE.CameraHelper(pointLight.shadow.camera)
-// scene.add(pointLightCameraHepler)
+scene.add(pointLightCameraHepler)
 
 
 /**

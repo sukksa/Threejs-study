@@ -47,7 +47,7 @@ const walls = new THREE.Mesh(
     new THREE.MeshStandardMaterial()
 )
 walls.position.y = houseMeasurements.height * 0.5
-scene.add(walls)
+house.add(walls)
 
 //  房顶 roof
 const roof = new THREE.Mesh(
@@ -57,7 +57,59 @@ const roof = new THREE.Mesh(
 roof.position.y = houseMeasurements.height + 1.5 * 0.5
 // roof.rotation.y = Math.PI * 0.25
 roof.rotateY(Math.PI * 0.25)
-scene.add(roof)
+house.add(roof)
+
+// door
+const door = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.2, 2.2),
+    new THREE.MeshStandardMaterial({
+        side: THREE.DoubleSide,
+        color: 0xff0000
+    })
+)
+door.position.y = 1
+door.position.z = houseMeasurements.depth * 0.5 + 0.01
+house.add(door)
+
+// 灌木丛 bushes
+const bushGeometry = new THREE.SphereGeometry(1, 16, 16)
+const bushMaterial = new THREE.MeshStandardMaterial()
+const bush1 = new THREE.Mesh(bushGeometry, bushMaterial)
+bush1.scale.set(0.5, 0.5, 0.5)
+bush1.position.set(0.8, 0.2, 2.2)
+const bush2 = new THREE.Mesh(bushGeometry, bushMaterial)
+bush2.scale.set(0.25, 0.25, 0.25)
+bush2.position.set(1.4, 0.1, 2.1)
+const bush3 = new THREE.Mesh(bushGeometry, bushMaterial)
+bush3.scale.set(0.4, 0.4, 0.4)
+bush3.position.set(-0.8, 0.1, 2.2)
+const bush4 = new THREE.Mesh(bushGeometry, bushMaterial)
+bush4.scale.set(0.15, 0.15, 0.15)
+bush4.position.set(-1, 0.05, 2.6)
+house.add(bush1, bush2, bush3, bush4)
+
+// graves 墓碑
+const graveGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.2)
+const graveMaterial = new THREE.MeshStandardMaterial()
+const graves = new THREE.Group()
+scene.add(graves)
+
+for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2
+    const radius = Math.random() * 4 + 3
+    const x = Math.sin(angle) * radius
+    const z = Math.cos(angle) * radius
+    // mesh
+    const grave = new THREE.Mesh(graveGeometry, graveMaterial)
+    grave.position.x = x
+    grave.position.y = Math.random() * 0.4
+    grave.position.z = z
+    grave.rotation.x = (Math.random() - 0.5) * 0.4
+    grave.rotation.y = (Math.random() - 0.5) * 0.4
+    grave.rotation.z = (Math.random() - 0.5) * 0.4
+    graves.add(grave)
+}
+
 /**
  * Lights
  */
