@@ -473,7 +473,7 @@ const geometry = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2)
 const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
 ```
 
-BufferGeometry
+### BufferGeometry
 
 创建自定义的几何体，通过类型化数组创建
 
@@ -1884,4 +1884,118 @@ tick()
 
 ## Particle
 
-粒子
+粒子, [particle-pack](https://kenney.nl/assets/particle-pack)
+
+| **参数**              | **类型**         | **默认值**       | **说明**                                             |
+| :-------------------- | :--------------- | :--------------- | :--------------------------------------------------- |
+| **`size`**            | `number`         | `1.0`            | 点的大小（单位：像素）                               |
+| **`sizeAttenuation`** | `boolean`        | `true`           | 是否启用随距离衰减的点大小（透视效果）               |
+| **`color`**           | `THREE.Color`    | `0xffffff`       | 点的颜色（十六进制或 CSS 颜色）                      |
+| **`map`**             | `THREE.Texture`  | `null`           | 点的纹理贴图（支持透明通道）                         |
+| **`alphaMap`**        | `THREE.Texture`  | `null`           | 透明贴图（覆盖 `map` 的 Alpha 通道）                 |
+| **`transparent`**     | `boolean`        | `false`          | 是否启用透明度（需配合 `opacity` 或贴图 Alpha 使用） |
+| **`opacity`**         | `number`         | `1.0`            | 整体透明度（`0.0` 完全透明 ~ `1.0` 不透明）          |
+| **`vertexColors`**    | `boolean`        | `false`          | 是否启用顶点颜色（需在几何体中定义 `color` 属性）    |
+| **`blending`**        | `THREE.Blending` | `NormalBlending` | 混合模式（如 `AdditiveBlending` 实现发光效果）       |
+
+```js
+// Geometry
+const particlesGeometry = new THREE.BufferGeometry()
+const count = 10000
+// const positions = new Float32Array(count * 3).fill(0).map(() => (Math.random() - 0.5) * 20) // (x,y,z)
+const positions = new Float32Array(count * 3)
+const colors = new Float32Array(count * 3)
+for (let i = 0; i < count * 3; i++) {
+    positions[i] = (Math.random() - 0.5) * 10
+    colors[i] = Math.random()
+}
+particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+const particlesMaterial = new THREE.PointsMaterial({
+    size: 0.1,
+    // color: 0x7799CC,
+    // map: particleTextrue,
+    alphaMap: particleTextrue,
+    transparent: true,
+})
+```
+
+### alphaTest
+
+particle的边缘会遮挡其他particle，不使用map，设置alphaMap，设置`alphaTest = true`,但是仍有边缘的过渡像素
+
+```js
+const particlesMaterial = new THREE.PointsMaterial({
+    size: 0.1,
+    // map: particleTextrue,
+    alphaMap: particleTextrue,
+    transparent: true,
+})
+particlesMaterial.alphaTest = 0.001
+```
+
+### depthTest
+
+GPU在绘制某个粒子时，会判断该粒子是否在其他粒子之前，若在后面该粒子不会被绘制，若在之前该粒子会被绘制这可能导致前后位置判断混乱。停用depthTest，GPU不会尝试去判断粒子是否在前面或者在其他物体前面。
+
+关闭depthTest可能会引发问题，如果场景中有其他物体或者颜色不同的粒子，会导致在物体后面的粒子也能看见。场景中如果只有一种颜色的粒子是可行的
+
+```js
+particlesMaterial.depthTest = false // 不可行
+```
+
+### depthWrite
+
+绘制内容的定义保存在depth buffer，类似于绘制内容的会灰度纹理，而WebGL在绘制物体、粒子等是，也会在depth buffer中处理。在绘制其他物体时，WebGL会检查depth buffer，看看是否在前面。我们指示WebGL不要在depth buffer绘制粒子
+
+```js
+particlesMaterial.depthWrite = false
+```
+
+### blending
+
+当一个像素有多个粒子时，会变得非常亮，这是AdditiveBlending，因为不是一层一层的绘制颜色而是把这个颜色加到之前的颜色上。就像不同颜色的灯光混合在一起
+
+```js
+particlesMaterial.depthWrite = false
+particlesMaterial.blending = THREE.AdditiveBlending
+// 使用顶点颜色，但是会将基础颜色和顶点颜色混合
+particlesMaterial.vertexColors = true
+```
+
+设置粒子波浪效果
+
+  更新`BufferGeometry`的粒子位置需要设置  `particlesGeometry.attributes.position.needsUpdate = true`
+
+```js
+const clock = new THREE.Clock()
+
+const tick = () => {
+    const elapsedTime = clock.getElapsedTime()
+
+    // Update particles
+    // 整体旋转
+    // particles.rotation.y = elapsedTime * 0.2
+    // 分别控制, 遍历所有的顶点
+    for (let i = 0; i < count; i++) {
+        // 3个元素为一组顶点，每次只访问x。count是顶点数
+        const i3 = i * 3
+        const x = particlesGeometry.attributes.position.array[i3]
+        // 粒子波浪运动
+        particlesGeometry.attributes.position.array[i3 + 1] = Math.sin(elapsedTime + x)
+        // 但是属性已经更新了，粒子却没有动，设置needsUpdate，告诉threejs更新
+    }
+    particlesGeometry.attributes.position.needsUpdate = true
+    // Update controls
+    controls.update()
+
+    // Render
+    renderer.render(scene, camera)
+
+    // Call tick again on the next frame
+    window.requestAnimationFrame(tick)
+}
+
+tick()
+```
+
