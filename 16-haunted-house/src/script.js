@@ -108,7 +108,7 @@ const houseMeasurements = {
 const axesHepler = new THREE.AxesHelper(5)
 // scene.add(axesHepler)
 
-// TODO floor 
+//  floor 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20, 100, 100),
     new THREE.MeshStandardMaterial({
         map: floorColorTexture,
@@ -251,7 +251,7 @@ for (let i = 0; i < 30; i++) {
 /**
  *    Lights
  */
-// TODO Ambient light
+//  Ambient light
 const ambientLight = new THREE.AmbientLight('#86cdff', 0.275)
 scene.add(ambientLight)
 
