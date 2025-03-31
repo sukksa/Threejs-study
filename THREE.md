@@ -2103,3 +2103,110 @@ gui.add(parameters, 'rotationY').min(-Math.PI).max(Math.PI).step(0.001).onFinish
 
 ```
 
+## Scroll HTML
+
+通过THREEjs滑动窗口，移动camera，切换mesh
+
+### Parallax 
+
+视差
+
+让camera跟随光标移动，模拟不同的视角来观察场景，让用户感到深度
+
+同时设置camera.position会导致滑动的position被覆盖失效
+
+```js
+camera.position.y = -scrollY / sizes.height * objectDistance
+
+const parallaxX = cursor.x
+const parallaxY = -cursor.y
+camera.position.x = parallaxX
+camera.position.y = parallaxY
+```
+
+创建一个组，camera 在 cameraGroup 内移动，不会影响到cameraGroup 的 position.y，cameraGroup 在 scene 中，会带着camera一起移动
+
+```js
+const cameraGroup = new THREE.Group()
+scene.add(cameraGroup)
+cameraGroup.add(camera)
+
+camera.position.y = -scrollY / sizes.height * objectDistance
+
+const parallaxX = cursor.x
+const parallaxY = -cursor.y
+cameraGroup.position.x = parallaxX
+cameraGroup.position.y = parallaxY
+```
+
+### Easing
+
+平滑移动，smoothing。使camera 移动更自然，不在每一帧都移动相同距离，在每一帧移动距离目标的十分之一，离目标越近移动的越缓慢，永远也到达不了目标位置
+
+```js
+cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * 0.1
+cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * 0.1
+```
+
+但是在高刷新率的显示器上 `window.requestAnimationFrame(tick)`调用的更频繁，cameraGroup.position 的值增加的更快，导致用户体验不同。
+
+乘以帧间隔的时间差，1s内60fps执行60次乘以1/60，120fps执行120次乘以1/120，所以移动的距离都是相同的
+
+```js
+const elapsedTime = clock.getElapsedTime() // 当前
+// 这一帧的时间与上一帧的时间差
+const deltaTime = elapsedTime - previousTime
+previousTime = elapsedTime
+
+// deltaTime太小了，乘以5扩大移动速率
+cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * 5 * deltaTime
+cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * 5 * deltaTime
+```
+
+### Add Particles
+
+增加粒子更能感受到深度。
+
+粒子在Y轴上，根据mesh数量距离动态分布
+
+```js
+for (let i = 0; i < particlesCount; i++) {
+    const i3 = i * 3
+    positions[i3] = (Math.random() - 0.5) * 10
+    // y 轴上三个mesh的距离上随机分布
+    positions[i3 + 1] = objectDistance * 0.5 - Math.random() * objectDistance * sectionMeshes.length
+    positions[i3 + 2] = (Math.random() - 0.5) * 10
+}
+```
+
+### Animate
+
+当滑到某个mesh（章节）时触发他的动画。
+
+通过gsap库实现动画
+
+```js
+const sectionMeshes = [mesh1, mesh2, mesh3]
+let scrollY = window.scrollY
+// 当前的章节
+let currentSection = 0
+window.addEventListener('scroll', () => {
+    scrollY = window.scrollY
+    // 总高度除以视口高度，得到当前滚动第几个的章节
+    const newSection = Math.round(scrollY / sizes.height)
+    // 切换章节
+    if (newSection !== currentSection) {
+        currentSection = newSection
+        gsap.to(
+            sectionMeshes[currentSection].rotation, {
+                duration: 1.5,
+                ease: 'power2.inOut',
+                x: '+=6',
+                y: '+=3',
+                z: '+=1.5'
+            }
+        )
+    }
+})
+```
+
