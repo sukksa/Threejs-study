@@ -8,6 +8,13 @@ import {
 import GUI from 'lil-gui'
 
 const textureLoader = new THREE.TextureLoader()
+// floor texture
+console.log(textureLoader);
+const floorAlphaTexture = textureLoader.load('/floor/alpha.jpg')
+const floorColorTexture = textureLoader.load('/floor/coast_sand_rocks_02_2k/coast_sand_rocks_02_diff_2k.jpg')
+const floorARMTextrue = textureLoader.load('/floor/coast_sand_rocks_02_2k/coast_sand_rocks_02_arm_2k.jpg')
+const floorNormalTexture = textureLoader.load('/floor/coast_sand_rocks_02_2k/coast_sand_rocks_02_nor_gl_2k.jpg')
+const floorDisplacementTextrue = textureLoader.load('/floor/coast_sand_rocks_02_2k/coast_sand_rocks_02_disp_2k.jpg')
 
 /**
  * Base
@@ -31,9 +38,13 @@ const houseMeasurements = {
 
 }
 
-// floor 
+// TODO floor 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20),
-    new THREE.MeshStandardMaterial())
+    new THREE.MeshStandardMaterial({
+        alphaMap: floorAlphaTexture,
+        transparent: true,
+        map: floorColorTexture
+    }))
 floor.rotateX(-Math.PI * 0.5)
 scene.add(floor)
 
