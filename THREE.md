@@ -473,7 +473,7 @@ const geometry = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2)
 const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true })
 ```
 
-BufferGeometry
+### BufferGeometry
 
 创建自定义的几何体，通过类型化数组创建
 
@@ -1209,7 +1209,8 @@ loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
 ### Vercel
 
 [vercel](https://vercel.com/) 在package.json添加一个名为 `“deploy”` 的新脚本，执行 `“vercel --prod”` 
-通过 `npm run deploy` 运行
+
+执行`npm i vercel`， `npm run deploy` 
 
 ```javascript
 {
@@ -1679,3 +1680,322 @@ const tick = () => {
 
 tick()
 ```
+
+## House Example
+
+一个简单的房屋渲染例子 [house](https://house-3bs0xlkux-yukis-projects-7a683544.vercel.app/)
+
+1. textures
+
+   在 [Poly Haven](https://polyhaven.com/)下载texture，最好jpg格式，上线前jpg转换为webp格式  [CloudConvert](https://cloudconvert.com/image-converter)  [Squoosh](https://squoosh.app/)
+
+   光影出错先检查法线贴图是否正确加载
+
+   解决纹理颜色泛白，设置正确的颜色，对于颜色贴图必须设置
+
+   ```js
+   floorColorTexture.colorSpace = THREE.SRGBColorSpace
+   ```
+
+   对于地板之类的设置纹理的平铺和重复，不然纹理放大会模糊
+
+   ```js
+   texture.repeat.set(5, 5)
+   // texture.repeat.set(0.3, 0.5) // 缩小
+   texture.wrapS = THREE.RepeatWrapping
+   texture.wrapT = THREE.RepeatWrapping
+   ```
+
+   一个模块的cube，设置为一个group统一管理
+
+   ```js
+   const house = new THREE.Group()
+   scene.add(house)
+   
+   const walls = new THREE.Mesh(...)
+   house.add(walls)
+   ```
+
+   displacementMap需要设置顶点数
+
+   ```js
+   const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20, 100, 100), // 
+       new THREE.MeshStandardMaterial({
+   		...
+           displacementMap: floorDisplacementTexture, // 高度，地形起伏
+           displacementScale: 0.3, // 高度缩放
+           displacementBias: -0.2, // 高度偏移，因为displacementMap会抬高，所以设置向下偏移
+       }))
+   ```
+   
+   设置cube在圆环内随机分布
+   
+   ```js
+   const graves = new THREE.Group()
+   scene.add(graves)
+   
+   for (let i = 0; i < 30; i++) {
+       // x z分别设置sin cos就在圆上，radius相当于圆的半径
+       const angle = Math.random() * Math.PI * 2 
+       const radius = Math.random() * 4 + 3
+       const x = Math.sin(angle) * radius
+       const z = Math.cos(angle) * radius
+       // mesh
+       const grave = new THREE.Mesh(graveGeometry, graveMaterial)
+       grave.position.x = x
+       grave.position.y = Math.random() * 0.4
+       grave.position.z = z
+       grave.rotation.x = (Math.random() - 0.5) * 0.4
+       grave.rotation.y = (Math.random() - 0.5) * 0.4
+       grave.rotation.z = (Math.random() - 0.5) * 0.4
+   
+       graves.add(grave)
+   }
+   ```
+   
+   
+   
+2. Light
+
+   directionalLight只控制方向，光影有问题检查法线贴图
+
+   ```js
+   const ambientLight = new THREE.AmbientLight('#86cdff', 0.275)
+   scene.add(ambientLight)
+   
+   // Directional light
+   const directionalLight = new THREE.DirectionalLight('#86cdff', 1)
+   directionalLight.position.set(3, 2, -8)
+   scene.add(directionalLight)
+   ```
+
+   设置旋转并沿着Y轴上下运动的pointLight
+
+   ```js
+   const tick = () => {
+       // Timer
+       timer.update()
+       const elapsedTime = timer.getElapsed()
+   
+       // ghosts
+       const ghost1Angle = elapsedTime * 0.5
+       ghost1.position.x = Math.cos(ghost1Angle) * 4
+       ghost1.position.z = Math.sin(ghost1Angle) * 4
+       ghost1.position.y = Math.sin(ghost1Angle) * Math.sin(ghost1Angle * 2.23) * Math.sin(ghost1Angle * 3.43)
+   
+       // Update controls
+       controls.update()
+   
+       // Render
+       renderer.render(scene, camera)
+   
+       // Call tick again on the next frame
+       window.requestAnimationFrame(tick)
+   }
+   
+   tick()
+   ```
+
+3. shadow
+
+   首先在`renderer`上激活阴影贴图， `type` 改为 `THREE.PCFSoftShadowMap`
+
+   ```js
+   renderer.shadowMap.enabled = true
+   renderer.shadowMap.type = THREE.PCFSoftShadowMap
+   ```
+
+   设置投射和接收阴影，`castShadow` `receiveShadow`
+
+   ```js
+   directionalLight.castShadow = true
+   ghost1.castShadow = true
+   walls.castShadow = true
+   walls.receiveShadow = true
+   roof.castShadow = true
+   floor.receiveShadow = true
+   ```
+
+   如果是循环创建的cube，不能给 group 添加shadow， 要在mesh上
+
+   ```js
+   // graves.castShadow = true
+   
+   for(const grave of graves.children)
+   {
+       grave.castShadow = true
+       grave.receiveShadow = true
+   }
+   ```
+
+4. mapping
+
+   调整shadow
+
+   ```js
+   // Mappings
+   directionalLight.shadow.mapSize.width = 256
+   directionalLight.shadow.mapSize.height = 256
+   directionalLight.shadow.camera.top = 8
+   directionalLight.shadow.camera.right = 8
+   directionalLight.shadow.camera.bottom = - 8
+   directionalLight.shadow.camera.left = - 8
+   directionalLight.shadow.camera.near = 1
+   directionalLight.shadow.camera.far = 20
+   ```
+
+5. sky 
+
+   使用three默认的sky，由于 `Sky` 继承自 [Mesh](https://threejs.org/docs/#api/en/objects/Mesh)，我们可以更新它的 `scale` 属性，设置大小
+
+   ```js
+   import { Sky } from 'three/addons/objects/Sky.js'const sky = new Sky()
+   // 大小
+   sky.scale.set(100, 100, 100)
+   scene.add(sky)
+   sky.material.uniforms['turbidity'].value = 10
+   sky.material.uniforms['rayleigh'].value = 3
+   sky.material.uniforms['mieCoefficient'].value = 0.1
+   sky.material.uniforms['mieDirectionalG'].value = 0.95
+   sky.material.uniforms['sunPosition'].value.set(0.3, -0.038, -0.95)
+   const sky = new Sky()
+   scene.add(sky)
+   ```
+
+6. fog
+
+   `Fog(color, near, far)`
+
+   near: fog的开始位置
+
+   far: fog的结束位置, fog离摄像机多远，雾将完全不透明
+
+   ```js
+   scene.fog = new THREE.Fog('#ff0000', 1, 13)
+   ```
+
+   `FogExp2(color,  density)` density 密度，离相机越远，密度越高。
+
+   ```js
+   scene.fog = new THREE.FogExp2('#04343f', 0.1)
+   ```
+
+
+
+## Particle
+
+粒子, [particle-pack](https://kenney.nl/assets/particle-pack)
+
+| **参数**              | **类型**         | **默认值**       | **说明**                                             |
+| :-------------------- | :--------------- | :--------------- | :--------------------------------------------------- |
+| **`size`**            | `number`         | `1.0`            | 点的大小（单位：像素）                               |
+| **`sizeAttenuation`** | `boolean`        | `true`           | 是否启用随距离衰减的点大小（透视效果）               |
+| **`color`**           | `THREE.Color`    | `0xffffff`       | 点的颜色（十六进制或 CSS 颜色）                      |
+| **`map`**             | `THREE.Texture`  | `null`           | 点的纹理贴图（支持透明通道）                         |
+| **`alphaMap`**        | `THREE.Texture`  | `null`           | 透明贴图（覆盖 `map` 的 Alpha 通道）                 |
+| **`transparent`**     | `boolean`        | `false`          | 是否启用透明度（需配合 `opacity` 或贴图 Alpha 使用） |
+| **`opacity`**         | `number`         | `1.0`            | 整体透明度（`0.0` 完全透明 ~ `1.0` 不透明）          |
+| **`vertexColors`**    | `boolean`        | `false`          | 是否启用顶点颜色（需在几何体中定义 `color` 属性）    |
+| **`blending`**        | `THREE.Blending` | `NormalBlending` | 混合模式（如 `AdditiveBlending` 实现发光效果）       |
+
+```js
+// Geometry
+const particlesGeometry = new THREE.BufferGeometry()
+const count = 10000
+// const positions = new Float32Array(count * 3).fill(0).map(() => (Math.random() - 0.5) * 20) // (x,y,z)
+const positions = new Float32Array(count * 3)
+const colors = new Float32Array(count * 3)
+for (let i = 0; i < count * 3; i++) {
+    positions[i] = (Math.random() - 0.5) * 10
+    colors[i] = Math.random()
+}
+particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+const particlesMaterial = new THREE.PointsMaterial({
+    size: 0.1,
+    // color: 0x7799CC,
+    // map: particleTextrue,
+    alphaMap: particleTextrue,
+    transparent: true,
+})
+```
+
+### alphaTest
+
+particle的边缘会遮挡其他particle，不使用map，设置alphaMap，设置`alphaTest = true`,但是仍有边缘的过渡像素
+
+```js
+const particlesMaterial = new THREE.PointsMaterial({
+    size: 0.1,
+    // map: particleTextrue,
+    alphaMap: particleTextrue,
+    transparent: true,
+})
+particlesMaterial.alphaTest = 0.001
+```
+
+### depthTest
+
+GPU在绘制某个粒子时，会判断该粒子是否在其他粒子之前，若在后面该粒子不会被绘制，若在之前该粒子会被绘制这可能导致前后位置判断混乱。停用depthTest，GPU不会尝试去判断粒子是否在前面或者在其他物体前面。
+
+关闭depthTest可能会引发问题，如果场景中有其他物体或者颜色不同的粒子，会导致在物体后面的粒子也能看见。场景中如果只有一种颜色的粒子是可行的
+
+```js
+particlesMaterial.depthTest = false // 不可行
+```
+
+### depthWrite
+
+绘制内容的定义保存在depth buffer，类似于绘制内容的会灰度纹理，而WebGL在绘制物体、粒子等是，也会在depth buffer中处理。在绘制其他物体时，WebGL会检查depth buffer，看看是否在前面。我们指示WebGL不要在depth buffer绘制粒子
+
+```js
+particlesMaterial.depthWrite = false
+```
+
+### blending
+
+当一个像素有多个粒子时，会变得非常亮，这是AdditiveBlending，因为不是一层一层的绘制颜色而是把这个颜色加到之前的颜色上。就像不同颜色的灯光混合在一起
+
+```js
+particlesMaterial.depthWrite = false
+particlesMaterial.blending = THREE.AdditiveBlending
+// 使用顶点颜色，但是会将基础颜色和顶点颜色混合
+particlesMaterial.vertexColors = true
+```
+
+设置粒子波浪效果
+
+  更新`BufferGeometry`的粒子位置需要设置  `particlesGeometry.attributes.position.needsUpdate = true`
+
+```js
+const clock = new THREE.Clock()
+
+const tick = () => {
+    const elapsedTime = clock.getElapsedTime()
+
+    // Update particles
+    // 整体旋转
+    // particles.rotation.y = elapsedTime * 0.2
+    // 分别控制, 遍历所有的顶点
+    for (let i = 0; i < count; i++) {
+        // 3个元素为一组顶点，每次只访问x。count是顶点数
+        const i3 = i * 3
+        const x = particlesGeometry.attributes.position.array[i3]
+        // 粒子波浪运动
+        particlesGeometry.attributes.position.array[i3 + 1] = Math.sin(elapsedTime + x)
+        // 但是属性已经更新了，粒子却没有动，设置needsUpdate，告诉threejs更新
+    }
+    particlesGeometry.attributes.position.needsUpdate = true
+    // Update controls
+    controls.update()
+
+    // Render
+    renderer.render(scene, camera)
+
+    // Call tick again on the next frame
+    window.requestAnimationFrame(tick)
+}
+
+tick()
+```
+
