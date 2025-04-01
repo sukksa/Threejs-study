@@ -148,6 +148,18 @@ mesh.rotation.x = Math.PI * 0.25
 
 ### 旋转 quaternion 四元数
 
+相当于给物体插入一根自定义角度的轴，使物体按照那根轴旋转
+
+```js
+const axis = new THREE.Vector3(-1, 0, 0); // 旋转轴（例如 -X 轴）
+const angle = Math.PI / 2; // 旋转角度（弧度制，90 度）
+// 相当于 new THREE.Vector3(1, 0, 0),  -Math.PI / 2
+const floor = new THREE.Mesh(...)
+floor.setRotationFromAxisAngle(axis, angle); // floor 沿x轴旋转逆向90度，垂直向上
+```
+
+
+
 ### LookAt
 
 调整摄像机对准目标，参数为三维向量，默认对准场景中心。
@@ -2037,10 +2049,8 @@ const generateGalaxy = () => {
     geometry = new THREE.BufferGeometry()
     const positions = new Float32Array(parameters.count * 3)
     const colors = new Float32Array(parameters.count * 3)
-
     const colorInside = new THREE.Color(parameters.insideColor)
     const colorOutside = new THREE.Color(parameters.outsideColor)
-
 
 
     for (let i = 0; i < parameters.count; i++) {
@@ -2107,6 +2117,109 @@ gui.add(parameters, 'rotationY').min(-Math.PI).max(Math.PI).step(0.001).onFinish
 
 通过THREEjs滑动窗口，移动camera，切换mesh
 
+html分为三个section，每个section占一个视口大小，每切换一个section（滑动一个视口的距离），触发mesh的动画
+
+给webgl设置样式固定在视口上，不随鼠标移动而移动
+
+```css
+.webgl {
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: none;
+}
+```
+
+给 webgl 设置背景透明度，显示html
+
+```js
+const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    alpha: true
+})
+renderer.setClearAlpha(0) // webgl的透明度
+```
+
+
+
+1. MeshToonMaterial gradientMap
+
+   webGL 在渐变纹理中，会选择光强接近的颜色，如果在两种渐变色中间，则会混合颜色 (灰、灰、（混合灰白）、白、白)
+   通过THREE.NearestFilter算法，让webGL不混合颜色，根据光强直接选择临近的颜色，没有渐变没有混合 (灰、灰、白、白)
+
+    ```js
+    const gradientTexture = textureLoader.load('/textures/gradients/3.jpg')
+    gradientTexture.magFilter = THREE.NearestFilter
+    ```
+   
+2. cursor
+
+   监听鼠标移动
+
+   ```js
+   const cursor = {
+       x: 0,
+       y: 0
+   }
+   window.addEventListener('mousemove', (event) => {
+       cursor.x = event.clientX / sizes.width - 0.5
+       cursor.y = event.clientY / sizes.height - 0.5
+   })
+   ```
+
+3. scrollY
+
+   监听滚动，当滚轮滑动一个视口高度时，触发事件
+
+   ```js
+   let scrollY = window.scrollY
+   // 当前的章节
+   let currentSection = 0
+   window.addEventListener('scroll', () => {
+       scrollY = window.scrollY
+       // 总高度除以视口高度，得到当前滚动第几个的章节 四舍五入，滚动了几个视口
+       const newSection = Math.round(scrollY / sizes.height)
+       // 切换章节
+       if (newSection !== currentSection) {
+           currentSection = newSection
+   		// ...
+       }
+   })
+   ```
+
+3. Animate
+
+   ```js
+   const clock = new THREE.Clock()
+   let previousTime = 0
+   const tick = () => {
+       const elapsedTime = clock.getElapsedTime()
+       // 这一帧的时间与上一帧的时间差
+       const deltaTime = elapsedTime - previousTime
+       previousTime = elapsedTime
+       // Animate camera
+       // 每滑动一个视口的距离，显示下一个mesh
+       // camera 在 cameraGroup 内移动，不会影响到cameraGroup的position.y
+       camera.position.y = -scrollY / sizes.height * objectDistance
+   
+       const parallaxX = cursor.x * 0.5
+       const parallaxY = -cursor.y * 0.5
+       cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * 5 * deltaTime
+       cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * 5 * deltaTime
+       // Animate meshes
+       for (const mesh of sectionMeshes) {
+           mesh.rotation.x += deltaTime * 0.1
+           mesh.rotation.y += deltaTime * 0.12
+       }
+       // Render
+       renderer.render(scene, camera)
+       // Call tick again on the next frame
+       window.requestAnimationFrame(tick)
+   }
+   tick()
+   ```
+
+
 ### Parallax 
 
 视差
@@ -2116,6 +2229,22 @@ gui.add(parameters, 'rotationY').min(-Math.PI).max(Math.PI).step(0.001).onFinish
 同时设置camera.position会导致滑动的position被覆盖失效
 
 ```js
+// 监听鼠标移动
+const cursor = {
+    x: 0,
+    y: 0
+}
+window.addEventListener('mousemove', (event) => {
+    cursor.x = event.clientX / sizes.width - 0.5
+    cursor.y = event.clientY / sizes.height - 0.5
+})
+
+// 监听滚动
+let scrollY = window.scrollY
+window.addEventListener('scroll', () => {
+    scrollY = window.scrollY
+})
+
 camera.position.y = -scrollY / sizes.height * objectDistance
 
 const parallaxX = cursor.x
@@ -2210,3 +2339,122 @@ window.addEventListener('scroll', () => {
 })
 ```
 
+## Physics
+
+物理效果
+
+- 3D 物理库
+  -  [Ammo.js](https://github.com/kripken/ammo.js/) 无文档 有点重 Bullet 的直接 JavaScript 移植（用 C++ 编写的物理引擎） 
+  - [Cannon.js](https://schteppe.github.io/cannon.js/) 比 Ammo.js 更轻
+  - [Oimo.js](https://github.com/lo-th/Oimo.js) 比 Ammo.js 更轻 2 年未更新
+  - [Rapier ](https://github.com/dimforge/rapier)与 Cannon.js 非常相似 性能好
+- 2D 物理库
+  - [Matter.js](https://github.com/liabru/matter-js)
+  - [P2.js](https://github.com/schteppe/p2.js) 2 年没有更新
+  - [Planck.js](https://github.com/shakiba/planck.js)
+  - [Box2D.js](https://github.com/kripken/box2d.js/)
+  - [Rapier](https://github.com/dimforge/rapier) 与 3D 的库相同
+
+2D 库代码与 3D 库代码非常相似。主要区别在于您必须更新的轴。
+
+### Cannon.js
+
+通过cannonjs建立一个与threejs相同的物理世界，具有相同的物质。将cannon的物理绑定在three上物质上，操作cannon的物理，更新每帧的three世界的物理效果。
+
+```powershell
+npm install cannon
+```
+
+```js
+import CANNON from 'cannon'
+```
+
+1. 新建 world 物理世界，将所有的物理模型都添加到 world 上
+
+    ```js
+    const world = new CANNON.World()
+    // 设置重力
+    world.gravity.set(0, -9.82, 0)
+    ```
+
+2. 新建 shape 形状，类似于threejs的 geometry
+
+    ```js
+    const sphereShape = new CANNON.Sphere(0.5)
+    ```
+
+3. 新建 body ，类似于threejs的 mesh，并且将 body 添加到 world上
+
+    ```js
+    // sphere
+    const sphereShape = new CANNON.Sphere(0.5)
+    const sphereBody = new CANNON.Body({
+        mass: 1,
+        position: new CANNON.Vec3(0, 3, 0),
+        shape: sphereShape
+    })
+    world.addBody(sphereBody)
+
+    // floor 他是数学上的平面无限延伸
+    const floorShape = new CANNON.Plane()
+    const floorBody = new CANNON.Body()
+    floorBody.mass = 0 // 质量为0，表示不动
+    floorBody.addShape(floorShape)
+    world.addBody(floorBody)
+    ```
+
+4. 增加 ContactMaterial 接触材质
+
+   接触材质，模拟的是不同的材质相撞时的表现，下面是 plasticMaterial 和 concreteMaterial 碰撞时的。接触需要提供摩擦力、弹性系数等参数，模拟显示中的物理。concrete 和 plastic 都是随意命名，本质上是 `ContactMaterial` 在起作用   
+   
+   通过 `world.addContactMaterial`添加到world中
+
+    ```js
+    const concreteMaterial = new CANNON.Material('concrete')
+    const plasticMaterial = new CANNON.Material('plastic')
+   
+    const concretePlasticContactMaterial = new CANNON.ContactMaterial(
+    concreteMaterial,
+    plasticMaterial, {
+    friction: 0.1,
+    restitution: 0.6
+    }
+    )
+    // 增加接触材质到world
+    world.addContactMaterial(concretePlasticContactMaterial)
+    // 分别给物体设置material
+    sphereBody.material = plasticMaterial
+    floorBody.material = concreteMaterial
+    ```
+   
+   创建 defaultMaterial 默认材质，使代码更简洁
+
+    ```js
+    const defaultMaterial = new CANNON.Material('default')
+    const defaultContactMaterial = new CANNON.ContactMaterial(
+    defaultMaterial,
+    defaultMaterial, {
+    friction: 0.1,
+    restitution: 0.7
+    }
+    )
+    world.addContactMaterial(defaultContactMaterial)
+    sphereBody.material = defaultMaterial
+    floorBody.material = defaultMaterial
+    ```
+   
+   或者将所有物体的默认的接触材质，设置为 `defaultContactMaterial`，不单独给物体设置材质
+
+    ```javascript
+    world.defaultContactMaterial = defaultContactMaterial
+    ```
+
+### 施加力
+
+applyForce
+
+applyImpulse
+
+applyLocalForce
+
+applyLocalImpulse

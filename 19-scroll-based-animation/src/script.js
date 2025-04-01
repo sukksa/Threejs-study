@@ -181,8 +181,6 @@ const tick = () => {
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
 
-
-
     // Animate camera
     // 每滑动一个视口的距离，显示下一个mesh
     // camera 在 cameraGroup 内移动，不会影响到cameraGroup的position.y
