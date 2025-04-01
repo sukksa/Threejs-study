@@ -2361,12 +2361,16 @@ window.addEventListener('scroll', () => {
 
 通过cannonjs建立一个与threejs相同的物理世界，具有相同的物质。将cannon的物理绑定在three上物质上，操作cannon的物理，更新每帧的three世界的物理效果。
 
+使用 [cannon-es](https://github.com/pmndrs/cannon-es)  ，其他人更新的cannonjs
+
 ```powershell
 npm install cannon
+npm install cannon-es
 ```
 
 ```js
 import CANNON from 'cannon'
+import * as CANNON from 'cannon-es'
 ```
 
 1. 新建 world 物理世界，将所有的物理模型都添加到 world 上
@@ -2449,12 +2453,88 @@ import CANNON from 'cannon'
     world.defaultContactMaterial = defaultContactMaterial
     ```
 
-### 施加力
+### Apply Force
 
-applyForce
+#### applyForce
+
+`applyForce` 方法用于向刚体施加一个力。该力会在当前时间步生效，并影响刚体的运动和旋转。
+
+```js
+body.applyForce(force, relativePosition);
+```
+
+- **`force`**: 施加的力向量（类型 `CANNNON.Vec3`），单位是牛顿（N）。
+- **`relativePosition`**: 力作用点的局部坐标（相对于刚体的质心，类型 `CANNON.Vec3`）。若省略，默认为质心 `(0, 0, 0)`。
+
+`applyForce` 是一次性作用，若需要持续力（如火箭推进），需在每帧调用。在非质心位置施加力会产生扭矩，导致刚体旋转。
 
 applyImpulse
 
 applyLocalForce
 
 applyLocalImpulse
+
+
+
+### broadphase
+
+每个物体与其他所有的物体计算碰撞，不论是否接触，这个阶段称为广义阶段
+
+广义碰撞检测方法
+
+- NaiveBoradphase
+
+  默认
+
+- GridBroadphase
+
+  将场景划分为不同的网格，物体只会计算和他同一个单元格的碰撞以及相邻的单元格的物体。
+
+  但是如果物体以极快的速度时，会穿过其他物体，这会导致计算出错
+
+- SAPBroadphase (Sweep And Prune)
+
+  物体移动过快时，不会碰撞到其他物体
+
+  通常使用这个
+
+  ```js
+  world.broadphase = new CANNON.SAPBroadphase(world)
+  ```
+
+  
+
+### Sleep
+
+物体静止不动时，仍然会与其他物体进行测试。我们可以将它设置为休眠，不参与测试与更新，当被碰撞时再将其唤醒
+
+```js
+world.allowSleep = true
+```
+
+sleepSpeedLimit  
+
+sleepTimeLimit
+
+### Event
+
+- colide
+
+- sleep
+
+- wakeup
+
+### 删除物体
+
+### constraints
+
+设置 constraint 意味着可以将物体合并，其中一个物体发生碰撞，整体都会受到影响
+
+- HingeConstraint
+- DistanceConstraint
+- LockConstraint
+- PointToPointConstraint
+
+workers
+
+将一部分代码交由其他线程处理
