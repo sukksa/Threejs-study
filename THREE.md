@@ -2982,3 +2982,7 @@ tick()
 [Threejs editor](https://threejs.org/editor/)
 
 3d 在线编辑器，可以打开本地文件预览。若model一团黑，请添加light，因为model都是基于 PBR 渲染的，在Threejs中会转换为 `MeshStandardMaterial`
+
+## Raycaster
+
+Raycaster 可以沿特定方向投射（或发射）光线，并测试哪些对象与它相交。可以使用该技术来检测玩家面前是否有墙壁，测试激光枪是否击中了某些物体，测试鼠标当前是否有物体以模拟鼠标事件，以及许多其他作。
