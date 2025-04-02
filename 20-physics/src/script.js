@@ -8,9 +8,7 @@ import CANNON from 'cannon'
  * Debug
  */
 const gui = new GUI()
-const debugObject = {
-
-}
+const debugObject = {}
 debugObject.createSphere = () => {
     createSphere(Math.random() * 0.5, {
         x: (Math.random() - 0.5) * 3,
@@ -306,7 +304,6 @@ const createBox = (width, height, depth, position) => {
         mesh,
         body
     })
-
 }
 /**
  * Animate
@@ -323,6 +320,7 @@ const tick = () => {
 
     // 固定的时间步长 
     // deltaTime 距离上次执行的时间差
+    // 最大执行子步数
     world.step(1 / 60, deltaTime, 3)
 
     for (const object of objectsToUpdate) {

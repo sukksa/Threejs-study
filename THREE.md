@@ -2361,7 +2361,7 @@ window.addEventListener('scroll', () => {
 
 通过cannonjs建立一个与threejs相同的物理世界，具有相同的物质。将cannon的物理绑定在three上物质上，操作cannon的物理，更新每帧的three世界的物理效果。
 
-使用 [cannon-es](https://github.com/pmndrs/cannon-es)  ，其他人更新的cannonjs
+使用 [cannon-es](https://github.com/pmndrs/cannon-es)  ，其他版本更新的cannonjs
 
 ```powershell
 npm install cannon
@@ -2369,7 +2369,7 @@ npm install cannon-es
 ```
 
 ```js
-import CANNON from 'cannon'
+import * as CANNON from 'cannon';
 import * as CANNON from 'cannon-es'
 ```
 
@@ -2387,14 +2387,14 @@ import * as CANNON from 'cannon-es'
     const sphereShape = new CANNON.Sphere(0.5)
     ```
 
-3. 新建 body ，类似于threejs的 mesh，并且将 body 添加到 world上
+3. 新建 body 物理刚体 ，类似于threejs的 mesh，并且将 body 添加到 world上
 
     ```js
     // sphere
     const sphereShape = new CANNON.Sphere(0.5)
     const sphereBody = new CANNON.Body({
         mass: 1,
-        position: new CANNON.Vec3(0, 3, 0),
+        position: new CANNON.Vec3(0, 3, 0), // 初始位置
         shape: sphereShape
     })
     world.addBody(sphereBody)
@@ -2452,39 +2452,216 @@ import * as CANNON from 'cannon-es'
     ```javascript
     world.defaultContactMaterial = defaultContactMaterial
     ```
+   
+4. 在gui添加createBox按钮，创建box
+
+   ```js
+   const gui = new GUI()
+   const debugObject = {}
+   gui.add(debugObject, 'createBox')
+   debugObject.createBox = () => {
+       // 随机大小 随机位置
+       createBox(Math.random(), Math.random(), Math.random(), {
+           x: (Math.random() - 0.5) * 3,
+           y: 3,
+           z: (Math.random() - 0.5) * 3,
+       })
+   }
+   
+   const createBox = (width, height, depth, position) => {
+       const mesh = new THREE.Mesh(boxGeometry, boxMaterial)
+       mesh.position.copy(position)
+       mesh.scale.set(width, height, depth)
+       mesh.castShadow = true
+       scene.add(mesh)
+   
+       // cannonjs 的物体都是从质心开始计算，threejs是从顶点开始计算的，因此需要除以2
+       const shape = new CANNON.Box(new CANNON.Vec3(width * 0.5, height * 0.5, depth * 0.5))
+       // const shape = new CANNON.Box(new CANNON.Vec3(width, height, depth))
+       const body = new CANNON.Body({
+           mass: 1,
+           position,
+           shape,
+           material: defaultMaterial,
+       })
+       body.position.copy(position)
+       // 添加碰撞事件，碰撞时播放声音
+       body.addEventListener('collide', playHitSound)
+       world.addBody(body)
+   
+       objectsToUpdate.push({
+           mesh,
+           body
+       })
+   }
+   ```
+   
+6. 同步物理与渲染状态
+
+   在动画循环中更新 Three.js 网格的位置和旋转：
+
+   ```js
+   const clock = new THREE.Clock()
+   let oldElapsedTime = 0
+   const tick = () => {
+       const elapsedTime = clock.getElapsedTime()
+       const deltaTime = elapsedTime - oldElapsedTime
+       oldElapsedTime = elapsedTime
+       // update physics world
+       // 施加全局的力
+       // sphereBody.applyForce(new CANNON.Vec3(-0.5, 0, 0), sphereBody.position)
+   
+       // 固定的时间步长  1/60 秒
+       // deltaTime 距离上次执行的时间差
+       world.step(1 / 60, deltaTime, 3)
+   
+       // 同步物理刚体与 Three.js 网格
+       mesh.position.copy(body.position)
+       mesh.quaternion.copy(body.quaternion)
+   
+       // 等价
+       // sphere.position.copy(sphereBody.position)
+       // // sphere.position.x = sphereBody.position.x
+       // // sphere.position.y = sphereBody.position.y
+       // // sphere.position.z = sphereBody.position.z
+   
+       // Update controls
+       controls.update()
+   
+       // Render
+       renderer.render(scene, camera)
+   
+       // Call tick again on the next frame
+       window.requestAnimationFrame(tick)
+   }
+   
+   tick()
+   ```
+
+   `world.step()`根据设定的时间步长，更新物理世界中所有刚体的位置、速度和碰撞状态。
+
+   | 参数名                | 类型   | 描述                                                         |
+   | :-------------------- | :----- | :----------------------------------------------------------- |
+   | `dt`                  | number | 时间步长（单位：秒）。通常与帧率匹配（如 60fps 用 `1/60`）。 |
+   | `timeSinceLastCalled` | number | 自上次调用函数以来经过的时间                                 |
+   | `maxSubSteps`         | number | 每个函数调用要执行的最大固定步骤数。                         |
+
+   ```js
+   world.step(1 / 60)
+   world.step(1 / 60, deltaTime, 3)
+   ```
+
+   子步数 = Math.min(deltaTime/(1/60), 3) 
+
+   60fps 实际执行1个子步（0.0167 / 0.0167 = 1）
+
+   120fps 实际执行0个子步（0.00833 / 0.01667 ≈0.5），但物理引擎会累积时间差，每2帧累计到16.67ms时执行1个子步（2*8.33=16.67ms > 16.67ms）多余的时间差累积到下一次计算
+
+   也就是同步不同帧率下每秒执行计算的步长为60次
 
 ### Apply Force
 
+只会对 `mass > 0` 的body生效
+
 #### applyForce
 
-`applyForce` 方法用于向刚体施加一个力。该力会在当前时间步生效，并影响刚体的运动和旋转。
+`applyForce` 是在世界坐标系中施加力，力的方向是基于全局坐标系的坐标轴方向（例如，`(0, 0, -10)` 表示沿全局 Z 轴负方向施加力）。
+
+当需要施加一个固定方向的力（如重力、风力、全局推力）时使用。
 
 ```js
-body.applyForce(force, relativePosition);
+body.applyForce(force, worldPoint);
 ```
 
-- **`force`**: 施加的力向量（类型 `CANNNON.Vec3`），单位是牛顿（N）。
-- **`relativePosition`**: 力作用点的局部坐标（相对于刚体的质心，类型 `CANNON.Vec3`）。若省略，默认为质心 `(0, 0, 0)`。
+| **参数名**   | **类型** | **描述**                                         |
+| ------------ | -------- | ------------------------------------------------ |
+| `force`      | `Vec3`   | 世界坐标系中的力向量，单位是牛顿（N）            |
+| `worldPoint` | `Vec3`   | 施加力的作用点（世界坐标系中的位置，默认是质心） |
 
-`applyForce` 是一次性作用，若需要持续力（如火箭推进），需在每帧调用。在非质心位置施加力会产生扭矩，导致刚体旋转。
+```js
+// 在世界坐标系中，沿全局 Y 轴向上施加10N一个力
+const force = new CANNON.Vec3(0, 10, 0);
+const worldPoint = body.position; // 作用点为物体的质心
+body.applyForce(force, worldPoint);
+```
 
-applyImpulse
+#### applyLocalForce
 
-applyLocalForce
+在刚体的局部坐标系（物体自身坐标系）中施加一个力。力的方向基于刚体自身的坐标轴方向（例如，`(0, 0, -10)` 表示沿物体的前向方向施加力）。
 
-applyLocalImpulse
+当需要施加与物体方向相关的力（如推进器、车辆动力）时使用。
 
+| **参数名**   | **类型** | **描述**                                         |
+| ------------ | -------- | ------------------------------------------------ |
+| `force`      | `Vec3`   | 世界坐标系中的力向量，单位是牛顿（N）            |
+| `localPoint` | `Vec3`   | 施加力的作用点（局部坐标系中的位置，默认是质心） |
 
+```js
+// 在局部坐标系中，沿物体自身 Z 轴方向施加力（推动物体前进）
+const force = new CANNON.Vec3(0, 0, 10);
+const localPoint = new CANNON.Vec3(0, 0, 0); // 作用点为物体的质心
+body.applyLocalForce(force, localPoint);
+```
 
-### broadphase
+#### applyImpulse
 
-每个物体与其他所有的物体计算碰撞，不论是否接触，这个阶段称为广义阶段
+在世界坐标系下施加冲量，立即改变刚体的线速度和角速度。
+
+冲量的作用点会影响刚体的角速度（可能导致旋转），直接改变速度而非加速度。
+
+| 参数名       | 类型   | 描述                                    |
+| :----------- | :----- | :-------------------------------------- |
+| `impulse`    | `Vec3` | 世界坐标系中的冲量向量（牛顿秒，N·s）。 |
+| `worldPoint` | `Vec3` | 世界坐标系中施加冲量的作用点坐标。      |
+
+```js
+body.applyImpulse(
+  new CANNON.Vec3(0, 10, 0), // 世界坐标系中向上的冲量
+  new CANNON.Vec3(0, 0, 0)   // 作用点在世界坐标系原点
+);
+```
+
+#### applyLocalImpulse
+
+在刚体的局部坐标系下施加冲量，引擎会将其转换为世界坐标系后再应用。
+
+| 参数名       | 类型   | 描述                                    |
+| :----------- | :----- | :-------------------------------------- |
+| `impulse`    | `Vec3` | 局部坐标系中的冲量向量（牛顿秒，N·s）。 |
+| `localPoint` | `Vec3` | 局部坐标系中施加冲量的作用点坐标。      |
+
+```js
+body.applyLocalImpulse(
+  new CANNON.Vec3(0, 0, 10), // 局部坐标系中向前的冲量（例如物体前方）
+  new CANNON.Vec3(0, 0, 0)   // 作用点在物体质心
+);
+```
+
+#### 区别
+
+- ApplyForce方法会在刚体上施加一个力。F=ma，有了力F就有了加速度a，有了加速度，物体就会有速度，就会慢慢动起来。(但是不会立马动起来，因为力不会直接影响速度)。**需要持续效果**（如火箭推进）
+
+- ApplyImpulse不会产生力，而是直接影响刚体的速度。通过ApplyImpulse方法添加的速度会与刚体原有的速度叠加，产生新的速度。**需要瞬时效果**（如物体跳跃）
+
+### Broadphase
+
+Cannon.js 中的 Broadphase（粗略碰撞检测阶段）是物理引擎优化碰撞检测的重要机制。Broadphase 负责快速筛选出**可能发生碰撞的物体对**，避免对所有物体进行精确碰撞检测（O(n²) 复杂度）。
+
+| 类型                | 算法描述                                                     | 时间复杂度 | 适用场景                     |
+| :------------------ | :----------------------------------------------------------- | :--------- | :--------------------------- |
+| **NaiveBroadphase** | 遍历所有物体对（两两检测）                                   | O(n²)      | 物体数量极少（< 50）         |
+| **GridBroadphase**  | 将空间划分为网格，只检测同一网格或相邻网格内的物体           | O(n)       | 物体分布较均匀的中等规模场景 |
+| **SAPBroadphase**   | 使用**扫描和剪枝**（Sweep and Prune）算法，沿某一轴排序后检测重叠区间 | O(n log n) | 物体分布不均匀的大规模场景   |
 
 广义碰撞检测方法
 
 - NaiveBoradphase
 
-  默认
+  检测所有可能的物体对（性能最低），默认
+
+  ```js
+  world.broadphase = new CANNON.NaiveBoradphase(world)
+  ```
 
 - GridBroadphase
 
@@ -2492,9 +2669,13 @@ applyLocalImpulse
 
   但是如果物体以极快的速度时，会穿过其他物体，这会导致计算出错
 
-- SAPBroadphase (Sweep And Prune)
+  ```js
+  world.broadphase = new CANNON.GridBroadphase(world)
+  ```
 
-  物体移动过快时，不会碰撞到其他物体
+- SAPBroadphase (Sweep And Prune) 
+
+  通过排序优化检测（性能较好，适合动态物体），物体移动过快时，不会碰撞到其他物体
 
   通常使用这个
 
@@ -2502,7 +2683,6 @@ applyLocalImpulse
   world.broadphase = new CANNON.SAPBroadphase(world)
   ```
 
-  
 
 ### Sleep
 
@@ -2512,29 +2692,166 @@ applyLocalImpulse
 world.allowSleep = true
 ```
 
-sleepSpeedLimit  
+- 通过 `body.sleepSpeedLimit` 调整进入休眠的速度阈值（默认 0.1s）
 
-sleepTimeLimit
+- 通过 `body.sleepTimeLimit` 调整静止时间阈值（默认 0.5 s）
 
 ### Event
 
-- colide
+- colide（碰撞事件）
 
-- sleep
+  当两个刚体发生碰撞时触发
 
-- wakeup
+  ```js
+  body.addEventListener('collide', playHitSound)
+  
+  const hitSound = new Audio('/sounds/hit.mp3')
+  const playHitSound = (collison) => {
+      // 只有碰撞力度大于某个值，才播放声音
+      // 用于获取沿法线方向的冲击速度，但是碰撞有时会触发四次事件，可以增加延迟解决
+      const impactStrength = collison.contact.getImpactVelocityAlongNormal()
+      if (impactStrength > 1.5) {
+          // 根据冲击大小设置音量
+          hitSound.volume = 0.1 * impactStrength
+          hitSound.currentTime = 0
+          hitSound.play()
+      }
+  }
+  ```
 
-### 删除物体
+- sleep （休眠事件）
 
-### constraints
+  当刚体停止运动超过阈值（默认 0.5 秒）后进入睡眠状态时触发
 
-设置 constraint 意味着可以将物体合并，其中一个物体发生碰撞，整体都会受到影响
+  ```js
+  body.addEventListener('sleep', (e) => {
+      console.log('物体进入休眠', e.target.id)
+  })
+  ```
+
+- wakeup （唤醒事件）
+
+  当休眠中的刚体受到外力作用恢复运动时触发。其他物体碰撞该休眠物体或通过 `body.wakeUp()` 手动唤醒
+
+  ```js
+  body.addEventListener('wakeup', (e) => {
+      console.log('物体被唤醒', e.target.id)
+  })
+  ```
+
+### Remove
+
+`body.removeEventListener(type, listener)` 删除事件侦听器，与添加时相同写法
+
+`world.removeBody(body)` 删除刚体
+
+```js
+// gui 中点击 reset 移除所有body和mesh
+debugObject.reset = () => {
+    for (const object of objectsToUpdate) {
+        // Remove body
+        object.body.removeEventListener('collide', playHitSound)
+        world.removeBody(object.body)
+
+        // Remove mesh
+        scene.remove(object.mesh)
+    }
+    objectsToUpdate.splice(0, objectsToUpdate.length)
+}
+```
+
+### Constraints
+
+约束（Constraints）用于限制物体之间的相对运动，可以创建各种物理连接效果（如铰链、弹簧、滑动轨道等）。设置 constraint 意味着可以将物体合并
 
 - HingeConstraint
+
+  铰链约束，允许物体绕特定轴旋转（如门、摆锤）
+
+  ```js
+  const hingeConstraint = new CANNON.HingeConstraint(
+    bodyA, 
+    bodyB, 
+    {
+      pivotA: new CANNON.Vec3(0, 0, 0),  // 连接点A
+      pivotB: new CANNON.Vec3(0, 0, 0),  // 连接点B
+      axisA: new CANNON.Vec3(0, 1, 0),   // 旋转轴A
+      axisB: new CANNON.Vec3(0, 1, 0)    // 旋转轴B
+    }
+  )
+  world.addConstraint(hingeConstraint)
+  ```
+
 - DistanceConstraint
+
+  距离约束，保持两个物体间的固定距离（类似刚性杆）
+
+  ```js
+  const distanceConstraint = new CANNON.DistanceConstraint(
+    bodyA, 
+    bodyB, 
+    2 // 保持2米的距离
+  )
+  world.addConstraint(distanceConstraint)
+  ```
+
 - LockConstraint
+
+  用于将两个刚体**完全锁定**，使其如同一个整体般运动。
+
+  ```js
+  new CANNON.LockConstraint(
+    bodyA,   // 第一个刚体
+    bodyB,   // 第二个刚体
+    {
+      maxForce: 1000,         // 维持约束的最大作用力（默认 1e6）
+      collideConnected: true, // 是否允许约束两端物体碰撞（默认 false）
+      wakeUpBodies: true      // 触发时唤醒物体（默认 true）
+    }
+  )
+  ```
+
+  
+
 - PointToPointConstraint
 
-workers
+  点对点约束，将两个刚体的特定点连接在一起（类似球窝关节）
 
-将一部分代码交由其他线程处理
+  ```js
+  // 定义约束的轴心点（局部坐标系）
+  const pivotA = new CANNON.Vec3(0, 1, 0)
+  const pivotB = new CANNON.Vec3(0, -1, 0)
+  
+  // 创建约束
+  const constraint = new CANNON.PointToPointConstraint(
+    bodyA, pivotA,
+    bodyB, pivotB
+  )
+  
+  // 将约束添加到物理世界
+  world.addConstraint(constraint)
+  ```
+
+约束参数
+
+| 属性                | 说明                 | 典型值       |
+| :------------------ | :------------------- | :----------- |
+| `maxForce`          | 约束能施加的最大力   | 1e6 (默认)   |
+| `collideConnected`  | 约束两端物体是否碰撞 | false (默认) |
+| `disableCollisions` | 是否禁用碰撞         | true/false   |
+
+```js
+constraint.maxForce = 1000 // 控制约束强度
+constraint.collideConnected = true // 允许约束两端物体碰撞
+```
+
+`world.removeConstraint(constraint)`  移除不再需要的约束
+
+### Web Workers
+
+将一部分代码交由其他线程处理 Web Workers
+
+
+
+## Import Models
+
