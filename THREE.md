@@ -2855,3 +2855,130 @@ constraint.collideConnected = true // 允许约束两端物体碰撞
 
 ## Import Models
 
+GLTF(GL Transmission Format)格式 [GLTF Model](https://github.com/KhronosGroup/glTF-Sample-Assets)
+
+- gltf Default
+
+  `*.gltf` 是一个 JSON 文件，包含了 camera，light，scene，material，object transformation，但是没有 geometry 和 texture
+
+  `.bin` 是一个二进制文件通常包含了 geometry 的属性（vertices positions, UV coordinates, normal, color 等）
+
+  `.png` 是一个 texture
+
+  加载 `.gltf` 会自动加载其他文件
+
+- gltf Binary
+
+  只有一个二进制文件 `*.glb`，更轻便，不能修改
+
+- gltf Draco
+
+  与 gltf Default 类似，但将 buffer data 压缩了，更轻便
+
+- gltf Embedded
+
+  只有一个`*.gltf` ，textrue 和 geometry 都整合进了 `*.gltf` 
+
+模型通常使用 PBR 
+
+### Loader
+
+[GLTFLoader](https://threejs.org/docs/?q=dra#examples/zh/loaders/GLTFLoader)
+
+```js
+// import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+// or
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const gltfLoader = new GLTFLoader()
+
+gltfLoader.load(
+    '/models/Duck/glTF/Duck.gltf',
+    (gltf) => {
+        console.log('load', gltf);
+        // 直接添加 children 会移除掉gltf中的mesh，别直接遍历原数组
+        // const children = [...gltf.scene.children]
+        // for (const child of children) {
+        //     scene.add(child)
+        // }
+
+        // or
+        scene.add(gltf.scene)
+    }
+)
+```
+
+gltf Draco 格式，直接通过上述方法会报错。
+
+Draco 通常应用与 geometry 的 buffer data，不是 gltf 专属的，需要引入 [DRACOLoader](https://threejs.org/docs/?q=dra#examples/zh/loaders/DRACOLoader)
+
+Draco 需要在客户端解压缩，如果模型庞大可能需要几秒钟，导致主线程阻塞。dracoLoader通过Web Assembly和Workers运行在gltfLoader上（不加载 Draco 文件时，使用默认版本也可以实例化。只有Draco 压缩后的才会执行）
+
+文件 `three/examples/jsm/libs/draco/`
+
+```js
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const gltfLoader = new GLTFLoader()
+const dracoLoader = new DRACOLoader()
+// 设置dracoLoader的解码路径
+dracoLoader.setDecoderPath('/draco/')
+// 将 gltfLoader 通过DRACOLoader实例化
+gltfLoader.setDRACOLoader(dracoLoader)
+gltfLoader.load(
+    '/models/Duck/glTF-Draco/Duck.gltf',
+    (gltf) => {
+        scene.add(gltf.scene)
+    },
+)
+```
+
+如果引入大型的model时，可能会导致webGL卡顿，时间取决于 dracoLoader 解压多少数据。因此根据情况是否选择压缩
+
+### Animation
+
+通常将 `AnimationMixer` 绑定到包含动画的模型对象（如 `GLTF` 或 `FBX` 加载的模型）
+
+```js
+let mixer = null
+gltfLoader.load(
+    '/models/Fox/glTF/Fox.gltf',
+    (gltf) => {
+        console.log(gltf);
+        // 将 AnimationMixer 绑定到包含动画的模型对象 gltf.scene
+        mixer = new THREE.AnimationMixer(gltf.scene)
+        // action 获取动画剪辑并播放
+        const action = mixer.clipAction(gltf.animations[0])
+        action.play()
+        // 缩放scene
+        gltf.scene.scale.set(0.025, 0.025, 0.025)
+        scene.add(gltf.scene)
+    },
+)
+
+const clock = new THREE.Clock()
+let previousTime = 0
+const tick = () => {
+    const elapsedTime = clock.getElapsedTime()
+    const deltaTime = elapsedTime - previousTime
+    previousTime = elapsedTime
+
+    // Update mixer
+    // 加载模型需要时间，判断 mixer 是否实例化
+    if (mixer) {
+        // 在动画循环中更新 mixer
+        mixer.update(deltaTime)
+    }
+    
+	// ...
+}
+tick()
+```
+
+
+
+### Threejs Editor
+
+[Threejs editor](https://threejs.org/editor/)
+
+3d 在线编辑器，可以打开本地文件预览。若model一团黑，请添加light，因为model都是基于 PBR 渲染的，在Threejs中会转换为 `MeshStandardMaterial`
