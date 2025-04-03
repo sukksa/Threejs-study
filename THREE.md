@@ -2879,7 +2879,7 @@ GLTF(GL Transmission Format)格式 [GLTF Model](https://github.com/KhronosGroup/
 
   只有一个`*.gltf` ，textrue 和 geometry 都整合进了 `*.gltf` 
 
-模型通常使用 PBR 
+模型通常使用 PBR ，所以material通常都是 `MeshStandardMaterial`，所以需要设置 light
 
 ### Loader
 
@@ -2985,4 +2985,229 @@ tick()
 
 ## Raycaster
 
-Raycaster 可以沿特定方向投射（或发射）光线，并测试哪些对象与它相交。可以使用该技术来检测玩家面前是否有墙壁，测试激光枪是否击中了某些物体，测试鼠标当前是否有物体以模拟鼠标事件，以及许多其他作。
+Raycaster 可以沿特定方向投射（或发射）光线，并测试哪些对象与它相交。可以使用该技术来检测玩家面前是否有墙壁，测试激光枪是否击中了某些物体，测试鼠标当前是否有物体以模拟鼠标事件等等。
+
+其原理是从一个起点向指定方向发射一条射线，计算与场景中物体的相交情况。
+
+```js
+const raycaster = new THREE.Raycaster()
+const rayOrigin = new THREE.Vector3(-3, 0, 0) // 光线的起点
+const rayDirection = new THREE.Vector3(1, 0, 0) // 光线的方向
+rayDirection.normalize() // 对三维向量使用归一化方法（转换为单位向量），确保向量的长度为1
+
+raycaster.set(rayOrigin, rayDirection)
+```
+
+### intersectObject()
+
+参数
+
+| 参数名      | 类型             | 描述                                                         |
+| :---------- | :--------------- | :----------------------------------------------------------- |
+| `object`    | `THREE.Object3D` | 需要检测的单个物体（如 `Mesh`, `Group` 等）。                |
+| `recursive` | `boolean`        | 若为 `true`，会递归检测物体及其所有子物体（例如 `Group` 中的子物体）。 |
+
+**返回值**
+
+返回一个按**距离从近到远**排序的相交点数组（`Array<Intersection>`）。
+
+为什么只有一个对象返回的却是一个数组？因为你可能多次穿过同一个物体，比如从正面穿过一个甜甜圈，就会刚好穿过两次。
+
+| 属性名      | 类型             | 描述                                                         |
+| :---------- | :--------------- | :----------------------------------------------------------- |
+| `object`    | `THREE.Object3D` | 被射线击中的物体（如 `Mesh`, `Line` 等）。                   |
+| `point`     | `THREE.Vector3`  | 交点在世界坐标系中的三维坐标。                               |
+| `distance`  | `number`         | 射线起点到交点的距离（单位与场景坐标系一致）。               |
+| `face`      | `THREE.Face3`    | 被击中的三角面（包含顶点索引、法线等信息）。仅适用于几何体（如 `BufferGeometry`）。 |
+| `faceIndex` | `number`         | 被击中面在几何体 `faces` 数组中的索引。                      |
+| `uv`        | `THREE.Vector2`  | 交点在该面的 UV 坐标（范围 `[0,1]`），用于贴图交互（如点击特定纹理区域）。 |
+
+```js
+const intersects = raycaster.intersectObject(object)
+```
+
+### intersectObjects()
+
+**参数**
+
+| 参数名      | 类型                                | 解释                                                         |
+| ----------- | ----------------------------------- | ------------------------------------------------------------ |
+| `objects`   | `Array<THREE.Object3D>`（物体数组） | 需要检测的物体数组。可以是场景中的任意物体（如 `Mesh`, `Group` 等）。 |
+| `recursive` | `boolean`（默认 `false`）           | 若为 `true`，会递归检测物体及其所有子物体（例如 `Group` 中的子物体）。 |
+
+**返回值**
+
+返回一个按**距离从近到远**排序的相交点数组（`Array<Intersection>`）。与 `intersectObject()`相同
+
+```js
+const intersects = raycaster.intersectObjects(objects)
+```
+
+
+
+设置三个mesh，沿y轴波浪运动，与 `raycaster`相交时改变颜色
+
+```js
+const raycaster = new THREE.Raycaster()
+const clock = new THREE.Clock()
+const tick = () => {
+    const elapsedTime = clock.getElapsedTime()
+    
+    // Update objects
+    object1.position.y = Math.sin(elapsedTime * 0.3) * 1.5
+    object2.position.y = Math.sin(elapsedTime * 0.8) * 1.5
+    object3.position.y = Math.sin(elapsedTime * 1.4) * 1.5
+
+    const rarOringin = new THREE.Vector3(-3, 0, 0)
+    const rayDirection = new THREE.Vector3(1, 0, 0)
+    rayDirection.normalize()
+    raycaster.set(rarOringin, rayDirection)
+
+    const objectsToTest = [object1, object2, object3]
+    const intersects = raycaster.intersectObjects(objectsToTest)
+    // 重置所有 mesh 的颜色
+    for (const object of objectsToTest) {
+        object.material.color.set('#ff0000')
+    }
+    // 相交时变为蓝色
+    for (const intersect of intersects) {
+        // intersect.object 就是 mesh
+        intersect.object.material.color.set(new THREE.Color('#7799cc'))
+    }
+	
+    // ...
+}
+
+tick()
+```
+
+
+
+### Mouse Event
+
+首先获取鼠标的位置，即光标的位置。我们不能直接使用像素位置，所以我们需要水平轴上从 -1 到 1 的值，以及垂直轴上从 -1 到 1 的值。
+
+```js
+const mouse = new THREE.Vector2() // (x, y)
+window.addEventListener('mousemove', (event) => {
+    // 将鼠标位置归一化为设备坐标。x 和 y 方向的取值范围是 [-1, 1]
+    mouse.x = (event.clientX / sizes.width) * 2 - 1
+    mouse.y = -(event.clientY / sizes.height) * 2 + 1
+})
+```
+
+`raycaster.setFromCamera()`
+
+用于**根据相机和屏幕坐标生成射线**的核心方法。它通过相机类型（透视相机 `PerspectiveCamera` 或正交相机 `OrthographicCamera`）和鼠标的归一化坐标（NDC），自动计算射线的起点（`origin`）和方向（`direction`）。~~别管那么多，直接设置就行~~
+
+```js
+setFromCamera(mouse,camera)
+```
+
+创建一个 `witness`变量，用来存放被 `hover` 的物体
+
+如果为`null`表明没有物体被 `hover`，表明鼠标进入事件发生了。相反的，表示鼠标移出事件发生了。
+
+```js
+if (intersects.length) {
+    if (currentIntersect === null) {
+        console.log('mouse enter')
+    }
+    currentIntersect = intersects[0]
+} else {
+    if (currentIntersect) {
+        console.log('mouse leave')
+    }
+    currentIntersect = null
+}
+```
+
+鼠标 `click`
+
+```js
+window.addEventListener('click', () => {
+    if (currentIntersect) {
+        console.log('clicked', currentIntersect)
+        if (currentIntersect.object === object1) {
+            console.log('object1 clicked')
+        }
+    }
+})
+```
+
+```js
+let currentIntersect = null
+const tick = () => {
+
+    //...
+    
+    // 将鼠标悬停的mesh变为蓝色
+    raycaster.setFromCamera(mouse, camera)
+    
+    const objectsToTest = [object1, object2, object3]
+    const intersects = raycaster.intersectObjects(objectsToTest)
+    for (const object of objectsToTest) {
+        object.material.color = new THREE.Color('#ff0000')
+    }
+
+    for (const intersect of intersects) {
+        intersect.object.material.color = new THREE.Color('#7799cc')
+    }
+
+    if (intersects.length) {
+        if (currentIntersect === null) {
+            console.log('mouse enter')
+        }
+        currentIntersect = intersects[0]
+    } else {
+        if (currentIntersect) {
+            console.log('mouse leave')
+        }
+        currentIntersect = null
+    }
+
+    // ...
+}
+
+tick()
+```
+
+### Load Model
+
+```JS
+let model = null
+const glftLoader = new GLTFLoader()
+glftLoader.load(
+    '/models/Duck/glTF-Binary/Duck.glb',
+    (gltf) => {
+        model = gltf.scene
+        model.position.y = -1.2
+        scene.add(model)
+    }
+)
+```
+
+加载model需要时间，`tick()`在一开始就执行了，但是model还未加载，因此需要判断model是否加载完成。
+
+```js
+const tick = () => {
+    // ...
+    
+    if (model) {
+        const modelIntersects = raycaster.intersectObject(model)
+        console.log(modelIntersects);
+    }
+    
+    // ...
+}
+```
+
+`rayCaster`通常只能作用于 `mesh`, `mesh` 具有几何形状，`rayCaster`需要知道位于空间中的位置。而 model 通常是一个 `group`，但是包含了多个`mesh`，可以通过设置递归方式，检测`group`的子对象和更深层的子对象
+
+```js
+const modelIntersects = raycaster.intersectObject(model, true)
+```
+
+虽然设置了单个对象的方式，最后却返回了多个`mesh`，这是因为是递归添加`group`的子对象，里面就包含了多个`mesh`。还有就是之前提到的，即使只有一个物体也可能有多个碰撞和交点。
+
+判断是否`hover`时，根据 `modelIntersects`的数组长度即可

@@ -1,6 +1,11 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import {
+    OrbitControls
+} from 'three/examples/jsm/controls/OrbitControls.js'
 import GUI from 'lil-gui'
+import {
+    GLTFLoader
+} from 'three/addons/loaders/GLTFLoader.js';
 
 /**
  * Base
@@ -14,27 +19,52 @@ const canvas = document.querySelector('canvas.webgl')
 // Scene
 const scene = new THREE.Scene()
 
+
 /**
  * Objects
  */
 const object1 = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 16, 16),
-    new THREE.MeshBasicMaterial({ color: '#ff0000' })
+    new THREE.MeshBasicMaterial({
+        color: '#ff0000'
+    })
 )
-object1.position.x = - 2
+object1.position.x = -2
 
 const object2 = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 16, 16),
-    new THREE.MeshBasicMaterial({ color: '#ff0000' })
+    new THREE.MeshBasicMaterial({
+        color: '#ff0000'
+    })
 )
 
 const object3 = new THREE.Mesh(
     new THREE.SphereGeometry(0.5, 16, 16),
-    new THREE.MeshBasicMaterial({ color: '#ff0000' })
+    new THREE.MeshBasicMaterial({
+        color: '#ff0000'
+    })
 )
 object3.position.x = 2
 
 scene.add(object1, object2, object3)
+
+/* 
+ Raycaseter
+*/
+const raycaster = new THREE.Raycaster()
+
+
+
+/* const rayOrigin = new THREE.Vector3(-3, 0, 0) // 光线的起点
+const rayDirection = new THREE.Vector3(1, 0, 0) // 光线的方向
+rayDirection.normalize() // 对三维向量使用归一化方法（转换为单位向量），确保向量的长度为1
+
+raycaster.set(rayOrigin, rayDirection)
+
+const intersect = raycaster.intersectObject(object1)
+console.log(intersect)
+const intersects = raycaster.intersectObjects([object1, object2, object3])
+console.log(intersects); */
 
 /**
  * Sizes
@@ -44,8 +74,7 @@ const sizes = {
     height: window.innerHeight
 }
 
-window.addEventListener('resize', () =>
-{
+window.addEventListener('resize', () => {
     // Update sizes
     sizes.width = window.innerWidth
     sizes.height = window.innerHeight
@@ -57,6 +86,33 @@ window.addEventListener('resize', () =>
     // Update renderer
     renderer.setSize(sizes.width, sizes.height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+})
+
+/* *
+ * Mouse
+ */
+const mouse = new THREE.Vector2() // (x, y)
+window.addEventListener('mousemove', (event) => {
+    // 将鼠标位置归一化为设备坐标。x 和 y 方向的取值范围是 [-1, 1]
+    mouse.x = (event.clientX / sizes.width) * 2 - 1
+    mouse.y = -(event.clientY / sizes.height) * 2 + 1
+})
+
+window.addEventListener('click', () => {
+    if (currentIntersect) {
+        console.log('clicked', currentIntersect)
+        if (currentIntersect.object === object1) {
+            console.log('object1 clicked')
+        } else if (currentIntersect.object === object2) {
+            console.log('object2 clicked')
+        }
+    }
+
+    if (modelClick) {
+        console.log('model clicked')
+    } else {
+        console.log('model not clicked')
+    }
 })
 
 /**
@@ -80,15 +136,91 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
+/* model
+ */
+let model = null
+const glftLoader = new GLTFLoader()
+glftLoader.load(
+    // '/models/Duck/glTF-Binary/Duck.glb',
+    '/models/model/采集器.glb',
+    (gltf) => {
+        model = gltf.scene
+        model.position.y = -2.2
+        scene.add(model)
+    }
+)
+const amientLight = new THREE.AmbientLight(0xffffff, 2.5)
+scene.add(amientLight)
+
 /**
  * Animate
  */
 const clock = new THREE.Clock()
 
-const tick = () =>
-{
+let currentIntersect = null
+let modelClick = false
+const tick = () => {
     const elapsedTime = clock.getElapsedTime()
 
+    // Update objects
+    object1.position.y = Math.sin(elapsedTime * 0.3) * 1.5
+    object2.position.y = Math.sin(elapsedTime * 0.8) * 1.5
+    object3.position.y = Math.sin(elapsedTime * 1.4) * 1.5
+    /* 
+        const rarOringin = new THREE.Vector3(-3, 0, 0)
+        const rayDirection = new THREE.Vector3(1, 0, 0)
+        rayDirection.normalize()
+        raycaster.set(rarOringin, rayDirection)
+
+        const objectsToTest = [object1, object2, object3]
+        const intersects = raycaster.intersectObjects(objectsToTest)
+        // 重置所有 mesh 的颜色
+        for (const object of objectsToTest) {
+            object.material.color.set('#ff0000')
+        }
+        // 相交时变为蓝色
+        for (const intersect of intersects) {
+            // intersect.object 就是 mesh
+            intersect.object.material.color.set(new THREE.Color('#7799cc'))
+        } */
+
+    // 将鼠标悬停的mesh变为蓝色
+    raycaster.setFromCamera(mouse, camera)
+    const objectsToTest = [object1, object2, object3]
+
+
+
+    const intersects = raycaster.intersectObjects(objectsToTest)
+    for (const object of objectsToTest) {
+        object.material.color = new THREE.Color('#ff0000')
+    }
+
+    for (const intersect of intersects) {
+        intersect.object.material.color = new THREE.Color('#7799cc')
+    }
+
+    if (intersects.length) {
+        if (currentIntersect === null) {
+            console.log('mouse enter')
+        }
+        currentIntersect = intersects[0]
+    } else {
+        if (currentIntersect) {
+            console.log('mouse leave')
+        }
+        currentIntersect = null
+    }
+    if (model) {
+        const modelIntersects = raycaster.intersectObject(model, true)
+        // console.log(modelIntersects);
+        if (modelIntersects.length > 0) {
+            model.scale.set(1.2, 1.2, 1.2)
+            modelClick = true
+        } else {
+            model.scale.set(1, 1, 1)
+            modelClick = false
+        }
+    }
     // Update controls
     controls.update()
 
