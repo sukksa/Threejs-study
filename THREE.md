@@ -3192,12 +3192,10 @@ glftLoader.load(
 ```js
 const tick = () => {
     // ...
-    
     if (model) {
         const modelIntersects = raycaster.intersectObject(model)
         console.log(modelIntersects);
     }
-    
     // ...
 }
 ```
@@ -3211,3 +3209,15 @@ const modelIntersects = raycaster.intersectObject(model, true)
 虽然设置了单个对象的方式，最后却返回了多个`mesh`，这是因为是递归添加`group`的子对象，里面就包含了多个`mesh`。还有就是之前提到的，即使只有一个物体也可能有多个碰撞和交点。
 
 判断是否`hover`时，根据 `modelIntersects`的数组长度即可
+
+```js
+if (model) {
+    const modelIntersects = raycaster.intersectObject(model, true)
+    if (modelIntersects.length > 0) {
+        model.scale.set(1.2, 1.2, 1.2)
+    } else {
+        model.scale.set(1, 1, 1)
+    }
+}
+```
+
