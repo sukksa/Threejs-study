@@ -923,7 +923,7 @@ scene.add(directionalLight);
 
 ### MeshStandardMaterial
 
-一种基于物理渲染（PBR）的材质，它通过 **金属度（Metalness）** 和 **粗糙度（Roughness）** 参数模拟真实世界的光照反射行为，能够实现高度逼真的材质效果。
+ [MeshStandardMaterial](https://threejs.org/docs/index.html?q=MeshStandardMaterial#api/zh/materials/MeshStandardMaterial) 一种基于物理渲染（PBR）的材质，它通过 **金属度（Metalness）** 和 **粗糙度（Roughness）** 参数模拟真实世界的光照反射行为，能够实现高度逼真的材质效果。
 
 | **参数名**              | **类型**        | **默认值**        | **说明**                                                     |
 | :---------------------- | :-------------- | :---------------- | :----------------------------------------------------------- |
@@ -1067,22 +1067,10 @@ const urls = [
 ];
 
 // 2. 创建加载器并加载
-const loader = new THREE.CubeTextureLoader();
-const texture = loader.load(urls, (cubeTexture) => {
-  // 3. 将立方体贴图设置为场景背景
-  scene.background = cubeTexture;
-
-  // 4. 或用于材质环境反射（如金属球）
-  const material = new THREE.MeshStandardMaterial({
-    metalness: 0.9,
-    roughness: 0.1,
-    envMap: cubeTexture // 应用环境贴图
-  });
-}, undefined, (err) => {
-  console.error('立方体贴图加载失败:', err);
-});
-
-scene.background = cubeTexture // 添加到场景
+const cubeTextureLoader = new THREE.CubeTextureLoader();
+const environmentMap = cubeTextureLoader.load(urls);
+scene.environment = environmentMap //将环境贴图加载到所有支持 envMap 的Material上，模拟灯光和反射
+scene.background = environmentMap // 添加到场景
 ```
 
 HDR贴图
@@ -3218,6 +3206,35 @@ if (model) {
     } else {
         model.scale.set(1, 1, 1)
     }
+}
+```
+
+## Environment Map
+
+环境贴图可以用作背景，也可以直接用作对象上的反射和照明。是的，环境贴图可以用来以非常逼真的方式照亮整个场景。
+
+通过 `THREE.CubeTextureLoader()`将`environmentMap`添加到背景
+
+```js
+const cubeTextureLoader = new THREE.CubeTextureLoader()
+const environmentMap = cubeTextureLoader.load(urls)
+scene.environment = environmentMap 
+scene.background = environmentMap
+```
+
+但是要调整 mesh 的环境贴图强度（`envMapIntensity`），可以通过 `scene.traverse()`遍历整个 `scene`，选择所有继承 `THREE.Mesh` 和 material 为 `THREE.MeshStandardMaterial`的对象
+
+> `scene.environment = environmentMap` 并不会给 `child.material.envMap`显式的设置`environmentMap`，而是为 `null`，所以需要在遍历中显式的设置 envMap 才能设置`envMapIntensity`，`child.material.envMap = environmentMap`
+
+```js
+const updateAllMaterials = () => {
+    scene.traverse((child) => {
+        // 等价于 child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial
+        if (child.isMesh && child.material.isMeshStandardMaterial) {
+            child.material.envMap = environmentMap
+            child.material.envMapIntensity = 3
+        }
+    })
 }
 ```
 
