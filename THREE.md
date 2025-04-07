@@ -3213,18 +3213,27 @@ if (model) {
 
 环境贴图可以用作背景，也可以直接用作对象上的反射和照明。是的，环境贴图可以用来以非常逼真的方式照亮整个场景。
 
+### LDR
+
 通过 `THREE.CubeTextureLoader()`将`environmentMap`添加到背景
 
 ```js
 const cubeTextureLoader = new THREE.CubeTextureLoader()
-const environmentMap = cubeTextureLoader.load(urls)
-scene.environment = environmentMap 
+const environmentMap = cubeTextureLoader.load([
+    '/environmentMaps/0/px.png',
+    '/environmentMaps/0/nx.png',
+    '/environmentMaps/0/py.png',
+    '/environmentMaps/0/ny.png',
+    '/environmentMaps/0/pz.png',
+    '/environmentMaps/0/nz.png'
+])
+scene.environment = environmentMap
 scene.background = environmentMap
 ```
 
 但是要调整 mesh 的环境贴图强度（`envMapIntensity`），可以通过 `scene.traverse()`遍历整个 `scene`，选择所有继承 `THREE.Mesh` 和 material 为 `THREE.MeshStandardMaterial`的对象
 
-> `scene.environment = environmentMap` 并不会给 `child.material.envMap`显式的设置`environmentMap`，而是为 `null`，所以需要在遍历中显式的设置 envMap 才能设置`envMapIntensity`，`child.material.envMap = environmentMap`
+> `scene.environment = environmentMap` 并不会给 `child.material.envMap`显式的设置`environmentMap`，而是为 `null`，所以需要在遍历中显式的设置 envMap 才能设置`envMapIntensity`，`child.material.envMap = environmentMap`，并且 `envMap` 会覆盖 `scene.environment`
 
 ```js
 const updateAllMaterials = () => {
@@ -3236,5 +3245,78 @@ const updateAllMaterials = () => {
         }
     })
 }
+gui.add(global, 'envMapIntensity').min(0).max(10).step(0.001).onChange(updateAllMaterials)
 ```
 
+或者直接设置`scene.environmentIntensity`，就不用显式的设置 `envMap`，会直接应用到所有的mesh上
+
+```js
+gui.add(scene, 'environmentIntensity').min(0).max(10).step(0.001)
+```
+
+`scene.backgroundBlurriness`设置背景的模糊程度，如果贴图的分辨率较低，建议设置
+
+`scene.backgroundIntensity` 设置背景亮度，他只影响背景，不会影响物体上的 `envMapIntensity`
+
+### HDRI Equirectanglar environment map
+
+**High Dynamic Range Image**，高动态范围成像。色彩范围比普通贴图要高，画面信息含量大光影细节丰富
+
+通过 `RGBELoader`，加载hdr贴图。 RGBE (Red Green Blue Exponent)，rgb储存颜色，e储存强度。
+
+> 需要设置 `environmentMap.mapping = THREE.EquirectangularReflectionMapping`，否则会当成LDR来处理
+
+```js
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js'
+
+const rgbeLoader = new RGBELoader()
+rgbeLoader.load('/environmentMaps/0/2k.hdr', (environmentMap) => {
+    // 设置投影方式
+    environmentMap.mapping = THREE.EquirectangularReflectionMapping
+    global.environmentMap = environmentMap
+
+    scene.environment = environmentMap
+    scene.background = environmentMap
+})
+```
+
+高分辨率的hdr文件较大，若加载较慢可以适当降低分辨率，并通过调整 `scene.backgroundBlurriness`来弥补
+
+blender 生成环境贴图 p24 35min
+
+## Realistic Render
+
+> `WebGLRenderer.physicallyCorrectLights`在 r165 版本后已废弃，现在默认为 true
+
+物理光照系统，设置光照模式偏向于现实世界
+
+----
+
+> `WebGLRenderer.outputEncoding` 在 r160 版本后已废弃,改用 `WebGLRenderer.outputColorSpace` 属性。
+>
+> 同样的`Textrue.encoding`也同样废弃，通过`Texture.colorSpace`设置，默认为`THREE.SRGBColorSpace`，也同样设置了sRGB解码
+
+渲染器的输出编码`outputColorSpace`默认为`THREE.SRGBColorSpace` （**不用修改**）
+
+`THREE.LinearSRGBColorSpace` 线性编码，人眼对亮度的感知不同，更好的分辨暗色，不好分辨亮色。计算机按照线性渲染时，看着不真实
+
+`THREE.SRGBColorSpace`计算机就更多的渲染暗色。纹理可能设置过编码，所以需要Threejs也同样使用这种编码。
+
+---
+
+**色调映射（Tone Mapping）** 是一种将 **高动态范围（HDR）** 图像转换为 **低动态范围（LDR）** 显示设备（如屏幕）的技术。简单来说，它解决了现实世界光照强度（如阳光亮度 1,000,000 nits）与屏幕显示亮度（通常 300-1000 nits）之间的巨大差异。
+
+如果使用 HDR 贴图，必须设置 toneMapping，否则高亮度区域会过度曝光（如金属材质反光变成纯白色），阴影细节丢失（如模型的内部结构看不清）
+
+`WebGLRenderer.toneMapping`默认是`NoToneMapping` 。通过 `WebGLRenderer.toneMappingExposure`调整曝光级别，默认是1
+
+| 类型                            | 效果                             | 适用场景                               | 曝光等级 | 性能消耗 |
+| :------------------------------ | :------------------------------- | :------------------------------------- | :------- | :------- |
+| **THREE.NoToneMapping**         | 原始线性映射，不做任何处理       | 快速调试/低端设备                      | 不需要   | 最低     |
+| **THREE.LinearToneMapping**     | 简单线性压缩，高光区域容易过曝   | 需要快速 HDR→LDR 转换的基础场景        | 0.5-1.2  | 低       |
+| **THREE.ReinhardToneMapping**   | 自适应亮度压缩，保留自然过渡     | 室内场景/中等动态范围内容              | 1.0-1.5  | 中       |
+| **THREE.CineonToneMapping**     | 模拟胶片曲线，高对比度带复古色调 | 艺术化风格/电影滤镜效果                | 1.2-1.8  | 中       |
+| **THREE.ACESFilmicToneMapping** | 电影工业标准，高光柔和，色彩鲜艳 | 需要高质量 PBR 材质的场景              | 1.0-2.0  | 较高     |
+| **THREE.AgXToneMapping**        | 基于 AgX 色彩空间的精准控制      | 需要精确色彩管理的专业渲染             | 0.8-1.5  | 高       |
+| **THREE.NeutralToneMapping**    | 中性平衡，减少色彩偏移           | 需要忠实还原原始颜色的场景             | 1.0-1.3  | 中       |
+| **THREE.CustomToneMapping**     | 自定义着色器实现特殊效果         | 需要实现特殊艺术效果（如赛博朋克风格） | 自定义   | 不定     |

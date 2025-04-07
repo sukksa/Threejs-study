@@ -6,16 +6,26 @@ import GUI from 'lil-gui'
 import {
     GLTFLoader
 } from 'three/examples/jsm/loaders/GLTFLoader.js'
+
+import {
+    RGBELoader
+} from 'three/examples/jsm/loaders/RGBELoader.js'
+
 const gltfLoader = new GLTFLoader()
 const cubeTextureLoader = new THREE.CubeTextureLoader()
+const rgbeLoader = new RGBELoader()
+
 
 /**
  * Base
  */
-// Debug
+// TODO Debug gui 
 const gui = new GUI()
 const global = {
-    envMapIntensity: 3
+    envMapIntensity: 3,
+    backgroundBlurriness: 0,
+    backgroundIntensity: 1,
+    environmentMap: null,
 }
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -30,7 +40,7 @@ const updateAllMaterials = () => {
     scene.traverse((child) => {
         // 等价于 child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial
         if (child.isMesh && child.material.isMeshStandardMaterial) {
-            child.material.envMap = environmentMap
+            child.material.envMap = global.environmentMap
             child.material.envMapIntensity = global.envMapIntensity
             child.material.needsUpdate = true
         }
@@ -38,10 +48,17 @@ const updateAllMaterials = () => {
 }
 
 gui.add(global, 'envMapIntensity').min(0).max(10).step(0.001).onChange(updateAllMaterials)
-
+gui.add(global, 'backgroundBlurriness').min(0).max(1).step(0.001).onChange(() => {
+    scene.backgroundBlurriness = global.backgroundBlurriness
+})
+gui.add(global, 'backgroundIntensity').min(0).max(10).step(0.001).onChange(() => {
+    scene.backgroundIntensity = global.backgroundIntensity
+})
 /* 
 environments  map
 */
+/* 
+// LDR environments map
 const environmentMap = cubeTextureLoader.load([
     '/environmentMaps/0/px.png',
     '/environmentMaps/0/nx.png',
@@ -52,6 +69,19 @@ const environmentMap = cubeTextureLoader.load([
 ])
 scene.environment = environmentMap
 scene.background = environmentMap
+scene.backgroundBlurriness = global.backgroundBlurriness
+scene.backgroundIntensity = global.backgroundIntensity */
+
+// HDR environments map
+rgbeLoader.load('/environmentMaps/0/2k.hdr', (environmentMap) => {
+    // 设置投影方式
+    // environmentMap.mapping = THREE.EquirectangularReflectionMapping
+    global.environmentMap = environmentMap
+
+    scene.environment = environmentMap
+    scene.background = environmentMap
+})
+
 /**
  * Torus Knot
  */
