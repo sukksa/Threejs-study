@@ -37,6 +37,8 @@ const updateAllMaterials = () => {
             // Activate shadow here
             // child.material.envMap = scene.environment
             // child.material.envMapIntensity = debugObject.envMapIntensity
+            child.castShadow = true
+            child.receiveShadow = true
         }
     })
 }
@@ -105,8 +107,14 @@ lights
  */
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
 directionalLight.position.set(0.25, 3, -2.25)
-scene.add(directionalLight)
+directionalLight.castShadow = true
+directionalLight.shadow.camera.far = 15
+directionalLight.shadow.mapSize.set(1024, 1024)
+directionalLight.shadow.normalBias = 0.05
 
+scene.add(directionalLight)
+// const directionalLightHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
+// scene.add(directionalLightHelper)
 gui.add(directionalLight, 'intensity').min(0).max(10).step(0.001).name('light intensity')
 gui.add(directionalLight.position, 'x').min(-5).max(5).step(0.001).name('light x')
 gui.add(directionalLight.position, 'y').min(-5).max(5).step(0.001).name('light y')
@@ -128,14 +136,28 @@ controls.enableDamping = true
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
+    antialias: true,
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-console.log(renderer.outputColorSpace);
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 2
 // renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 // renderer.outputColorSpace = THREE.NoColorSpace;
 // renderer.physicallyCorrectLights = true
+
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+
+gui.add(renderer, 'toneMapping', {
+    No: THREE.NoToneMapping,
+    Linear: THREE.LinearToneMapping,
+    Reinhard: THREE.ReinhardToneMapping,
+    Cineon: THREE.CineonToneMapping,
+    ACESFilmic: THREE.ACESFilmicToneMapping
+})
+gui.add(renderer, 'toneMappingExposure').min(0).max(10).step(0.001).name('exposure')
 /**
  * Animate
  */

@@ -3310,6 +3310,11 @@ blender 生成环境贴图 p24 35min
 
 `WebGLRenderer.toneMapping`默认是`NoToneMapping` 。通过 `WebGLRenderer.toneMappingExposure`调整曝光级别，默认是1
 
+```js
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 2
+```
+
 | 类型                            | 效果                             | 适用场景                               | 曝光等级 | 性能消耗 |
 | :------------------------------ | :------------------------------- | :------------------------------------- | :------- | :------- |
 | **THREE.NoToneMapping**         | 原始线性映射，不做任何处理       | 快速调试/低端设备                      | 不需要   | 最低     |
@@ -3320,3 +3325,72 @@ blender 生成环境贴图 p24 35min
 | **THREE.AgXToneMapping**        | 基于 AgX 色彩空间的精准控制      | 需要精确色彩管理的专业渲染             | 0.8-1.5  | 高       |
 | **THREE.NeutralToneMapping**    | 中性平衡，减少色彩偏移           | 需要忠实还原原始颜色的场景             | 1.0-1.3  | 中       |
 | **THREE.CustomToneMapping**     | 自定义着色器实现特殊效果         | 需要实现特殊艺术效果（如赛博朋克风格） | 自定义   | 不定     |
+
+```js
+gui.add(renderer, 'toneMapping', {
+    No: THREE.NoToneMapping,
+    Linear: THREE.LinearToneMapping,
+    Reinhard: THREE.ReinhardToneMapping,
+    Cineon: THREE.CineonToneMapping,
+    ACESFilmic: THREE.ACESFilmicToneMapping
+})
+gui.add(renderer, 'toneMappingExposure').min(0).max(10).step(0.001)
+```
+
+---
+
+anti-aliasing 抗锯齿
+
+1. SSAA(super sampling) or FSAA(full screen sampling , 全屏采样) 将渲染器的尺寸增大，然后调整到原来的大小，会渲染原来4倍大小的像素。**性能开销极大**
+
+2. MSAA(multi sampling, 多重采样)，SSAA作用于全屏，而MSAA只作用于边缘
+
+   ```js
+   const renderer = new THREE.WebGLRenderer({
+       // ...
+       antialias: true,
+   })
+   // 必须在实例化时设置
+   // renderer.antialias = true  // error
+   ```
+
+---
+
+shadow
+
+```js
+// renderer
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+
+// directionalLight
+directionalLight.castShadow = true
+directionalLight.shadow.camera.far = 15
+directionalLight.shadow.mapSize.set(1024, 1024)
+const directionalLightHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
+scene.add(directionalLightHelper)
+
+// models 的所有部位都能投射和接收阴影
+const updateAllMaterials = () => {
+    scene.traverse((child) => {
+        if (child.isMesh && child.material.isMeshStandardMaterial) {
+            // ...
+            child.castShadow = true
+            child.receiveShadow = true
+        }
+    })
+}
+```
+
+shadow acne
+
+他会在物体的两侧，光滑和平坦的表面出现，阴影贴图保存在了物体的表面，导致自己遮挡自己，我们需要推动物体表面（向内），使阴影贴图保存在物体表面之外
+
+设置阴影偏移`bias`或者法线偏移`normalBias`
+
+```js
+directionalLight.shadow.normalBias = 0.05; // 0~0.1
+// or
+directionalLight.shadow.bias = 0.01; // 0.001~0.01
+```
+
