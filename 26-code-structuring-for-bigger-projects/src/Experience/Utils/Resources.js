@@ -14,12 +14,14 @@ export default class Resources extends EventEmitter {
     this.setLoaders()
     this.startLoading()
   }
+  // 加载需要的loader
   setLoaders() {
     this.loaders = {}
     this.loaders.gltfLoader = new GLTFLoader()
     this.loaders.textureLoader = new THREE.TextureLoader()
     this.loaders.cubeTextureLoader = new THREE.CubeTextureLoader()
   }
+  // 通过loader加载资源
   startLoading() {
     for (const source of this.sources) {
       switch (source.type) {
@@ -41,10 +43,10 @@ export default class Resources extends EventEmitter {
       }
     }
   }
+  // 资源加载后，存储到items中，并判断是否全部加载完成
   sourceLoaded(source, file) {
     this.items[source.name] = file
     this.loaded++
-
     if (this.loaded === this.toLoad) {
       this.trigger('ready')
     }

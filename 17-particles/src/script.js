@@ -1,7 +1,5 @@
 import * as THREE from 'three'
-import {
-    OrbitControls
-} from 'three/examples/jsm/controls/OrbitControls.js'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import GUI from 'lil-gui'
 
 /**
@@ -38,7 +36,6 @@ for (let i = 0; i < count * 3; i++) {
 particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
 particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
-
 // Material
 // particle的边缘会遮挡其他particle，不使用map，设置alphaMap
 // particle是按照顺序绘制的，
@@ -61,8 +58,6 @@ particlesMaterial.blending = THREE.AdditiveBlending
 // 使用顶点颜色，但是会将基础颜色和顶点颜色混合
 particlesMaterial.vertexColors = true
 
-
-
 // Particles
 const particles = new THREE.Points(particlesGeometry, particlesMaterial)
 scene.add(particles)
@@ -79,13 +74,12 @@ scene.add(particles)
 // const particles = new THREE.Points(myBufferGeometry, particlesMaterial)
 // scene.add(particles)
 
-
 /**
  * Sizes
  */
 const sizes = {
     width: window.innerWidth,
-    height: window.innerHeight
+    height: window.innerHeight,
 }
 
 window.addEventListener('resize', () => {
@@ -118,7 +112,7 @@ controls.enableDamping = true
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))

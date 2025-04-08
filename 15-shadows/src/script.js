@@ -1,7 +1,5 @@
 import * as THREE from 'three'
-import {
-    OrbitControls
-} from 'three/examples/jsm/controls/OrbitControls.js'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import GUI from 'lil-gui'
 
 /**
@@ -37,10 +35,10 @@ gui.add(directionalLight.position, 'z').min(-5).max(5).step(0.001)
 scene.add(directionalLight)
 
 // directionalLight 的 camera 是一个正交相机，无透视
-// 投射 
+// 投射
 directionalLight.castShadow = true
 // 优化阴影 贴图的尺寸
-console.log(directionalLight.shadow);
+console.log(directionalLight.shadow)
 directionalLight.shadow.mapSize.width = 1024
 directionalLight.shadow.mapSize.height = 1024
 // 阴影能中照射到的范围，缩小渲染范围在球体的边缘看到更多的细节，更清晰的呈现阴影
@@ -56,7 +54,6 @@ const directionalLightCameraHelper = new THREE.CameraHelper(directionalLight.sha
 directionalLightCameraHelper.visible = false
 scene.add(directionalLightCameraHelper)
 // shadow map algorithm 阴影贴图算法
-
 
 // Spot Light 透视相机
 const spotLight = new THREE.SpotLight(0xffffff, 0.3, 10, Math.PI * 0.3)
@@ -90,7 +87,6 @@ scene.add(pointLight)
 const pointLightCameraHepler = new THREE.CameraHelper(pointLight.shadow.camera)
 scene.add(pointLightCameraHepler)
 
-
 /**
  * Materials
  */
@@ -102,15 +98,9 @@ gui.add(material, 'roughness').min(0).max(1).step(0.001)
 /**
  * Objects
  */
-const sphere = new THREE.Mesh(
-    new THREE.SphereGeometry(0.5, 32, 32),
-    material
-)
+const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), material)
 
-const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(5, 5),
-    material
-)
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), material)
 plane.rotation.x = -Math.PI * 0.5
 plane.position.y = -0.5
 // sphere投射阴影
@@ -119,13 +109,12 @@ sphere.castShadow = true
 plane.receiveShadow = true
 scene.add(sphere, plane)
 
-
 const sphereShadow = new THREE.Mesh(
     new THREE.PlaneGeometry(1.5, 1.5),
     new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: true,
-        alphaMap: simpleShadow
+        alphaMap: simpleShadow,
     })
 )
 sphereShadow.rotation.x = -Math.PI * 0.5
@@ -138,7 +127,7 @@ scene.add(axesHelper)
  */
 const sizes = {
     width: window.innerWidth,
-    height: window.innerHeight
+    height: window.innerHeight,
 }
 
 window.addEventListener('resize', () => {
@@ -173,7 +162,7 @@ controls.enableDamping = true
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
+    canvas: canvas,
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -201,7 +190,7 @@ const tick = () => {
     // Update the shadow
     sphereShadow.position.x = sphere.position.x
     sphereShadow.position.z = sphere.position.z
-    sphereShadow.material.opacity = ((1 - sphere.position.y) / 3)
+    sphereShadow.material.opacity = (1 - sphere.position.y) / 3
 
     // Update controls
     controls.update()

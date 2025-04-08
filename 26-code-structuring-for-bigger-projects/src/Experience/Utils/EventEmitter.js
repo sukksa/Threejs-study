@@ -25,7 +25,8 @@ export default class EventEmitter {
       const name = this.resolveName(_name)
 
       // Create namespace if not exist
-      if (!(this.callbacks[name.namespace] instanceof Object)) this.callbacks[name.namespace] = {}
+      if (!(this.callbacks[name.namespace] instanceof Object))
+        this.callbacks[name.namespace] = {}
 
       // Create callback if not exist
       if (!(this.callbacks[name.namespace][name.value] instanceof Array))
@@ -64,11 +65,15 @@ export default class EventEmitter {
         if (name.namespace === 'base') {
           // Try to remove from each namespace
           for (const namespace in this.callbacks) {
-            if (this.callbacks[namespace] instanceof Object && this.callbacks[namespace][name.value] instanceof Array) {
+            if (
+              this.callbacks[namespace] instanceof Object &&
+              this.callbacks[namespace][name.value] instanceof Array
+            ) {
               delete this.callbacks[namespace][name.value]
 
               // Remove namespace if empty
-              if (Object.keys(this.callbacks[namespace]).length === 0) delete this.callbacks[namespace]
+              if (Object.keys(this.callbacks[namespace]).length === 0)
+                delete this.callbacks[namespace]
             }
           }
         }
@@ -81,7 +86,8 @@ export default class EventEmitter {
           delete this.callbacks[name.namespace][name.value]
 
           // Remove namespace if empty
-          if (Object.keys(this.callbacks[name.namespace]).length === 0) delete this.callbacks[name.namespace]
+          if (Object.keys(this.callbacks[name.namespace]).length === 0)
+            delete this.callbacks[name.namespace]
         }
       }
     })
@@ -112,7 +118,10 @@ export default class EventEmitter {
     if (name.namespace === 'base') {
       // Try to find callback in each namespace
       for (const namespace in this.callbacks) {
-        if (this.callbacks[namespace] instanceof Object && this.callbacks[namespace][name.value] instanceof Array) {
+        if (
+          this.callbacks[namespace] instanceof Object &&
+          this.callbacks[namespace][name.value] instanceof Array
+        ) {
           this.callbacks[namespace][name.value].forEach(function (callback) {
             result = callback.apply(this, args)
 

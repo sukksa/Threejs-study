@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import Sizes from './Utils/Sizes.js'
 import Time from './Utils/Time.js'
+import Debug from './Utils/Debug.js'
 import Camera from './Camera.js'
 import Renderer from './Renderer.js'
 import World from './World/World.js'
@@ -24,6 +25,7 @@ export default class Experience {
     this.canvas = canvas
 
     // setup
+    this.debug = new Debug()
     this.sizes = new Sizes()
     this.time = new Time()
     this.scene = new THREE.Scene()
@@ -32,6 +34,7 @@ export default class Experience {
     this.renderer = new Renderer()
     this.world = new World()
 
+    // EventEmitter的方法
     // 监听窗口大小变化事件，调用resize方法
     this.sizes.on('resize', () => {
       this.resize()
@@ -39,10 +42,6 @@ export default class Experience {
     // 监听时间变化事件，调用update方法
     this.time.on('tick', () => {
       this.update()
-    })
-    // 监听资源加载完成事件，调用ready方法
-    this.resources.on('ready', () => {
-      this.ready()
     })
   }
 
@@ -52,9 +51,34 @@ export default class Experience {
   }
   update() {
     this.camera.update()
+    this.world.update()
+    // render 放在最后，确保所有物体都渲染完成
     this.renderer.update()
   }
-  ready() {
-    this.world.ready()
+
+  destroy() {
+    // EventEmitter的方法，移除事件监听
+    this.sizes.off('resize')
+    this.time.off('tick')
+
+    // 遍历场景中的所有物体
+    this.scene.traverse(child => {
+      // 检查物体是否是Mesh
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose()
+
+        // 遍历网格模型的材质，调用dispose方法
+        for (const key in child.material) {
+          const value = child.material[key]
+          if (value && typeof value.dispose === 'function') {
+            value.dispose()
+          }
+        }
+      }
+
+      this.camera.controls.dispose()
+      this.renderer.instance.dispose()
+      if (this.debug.active) this.debug.ui.destroy()
+    })
   }
 }
