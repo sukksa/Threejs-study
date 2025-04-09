@@ -3394,3 +3394,39 @@ directionalLight.shadow.normalBias = 0.05; // 0~0.1
 directionalLight.shadow.bias = 0.01; // 0.001~0.01
 ```
 
+## Shaders
+
+着色器是原生 WebGL 的一部分，如果不依赖任何库使用 WebGl 的话，需要自己动手创建 Shader。
+
+shader 是用 GLSL(OpenGL Shading Language) 编写的程序，他会被发送到GPU运行。shader 会为几何体的每个顶点定位，以及为几何体的所有可见片段（fragment）着色。
+
+我们会为shader发送大量的数据，比如顶点坐标、网格变换信息、摄像机的信息以及几何体的顶点颜色、纹理等等。然后交给CPU，利用GLSL编写的着色器程序处理这些数据，最终在屏幕上定位顶点，并为每个可见片段着色
+
+着色器有两种类型
+
+- vertex shader
+- fragment shader
+
+7min
+
+### Vertex Shader
+
+顶点着色器会为每个几何体的顶点定位
+
+当顶点着色器为顶点定位完之后，GPU 便知道哪些几何体的像素是可见的，然后进入片段着色器(fragment shader)
+
+
+
+
+
+为什么要自己编写着色器？为什么我们不能直接使用Threejs的内置材质？
+
+- 材质不够灵活，一些形状通过内置的material无法实现
+- 着色器高效，比Threejs需要性能开销更少
+- 可以做后期处理
+
+Threejs有两种着色器`ShaderMaterial` `RawShaderMaterial`。`ShaderMaterial`包含了必要的一些代码，能帮助我们节省时间，提高速度。`RawShaderMaterial`就是原始的，必须编写所有代码。
+
+### RawShaderMaterial
+
+`THREE.RawShaderMaterial`创建原始着色器
