@@ -4,7 +4,6 @@ import GUI from 'lil-gui'
 import testVertexShader from './shader/test/vertex.glsl'
 import testFragmentShader from './shader/test/fragment.glsl'
 
-console.log(testVertexShader)
 /**
  * Base
  */
@@ -21,24 +20,51 @@ const scene = new THREE.Scene()
  * Textures
  */
 const textureLoader = new THREE.TextureLoader()
-
+const flagTexture = textureLoader.load('/textures/flag-french.jpg')
 /**
  * Test mesh
  */
 // Geometry
 const geometry = new THREE.PlaneGeometry(1, 1, 32, 32)
-console.log(geometry.attributes.position)
 
+const count = geometry.attributes.position.count
+const randoms = new Float32Array(count)
+for (let i = 0; i < count; i++) {
+  randoms[i] = Math.random()
+}
+geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1))
+console.log(geometry.attributes)
 // Material
 const material = new THREE.RawShaderMaterial({
   vertexShader: testVertexShader,
   fragmentShader: testFragmentShader,
+  transparent: true,
+  side: THREE.DoubleSide,
   // wireframe: true,
+  uniforms: {
+    uFrequency: { value: new THREE.Vector2(10, 5) },
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(0x7799cc) },
+    uTexture: { value: flagTexture },
+  },
 })
 
+gui
+  .add(material.uniforms.uFrequency.value, 'x')
+  .min(0)
+  .max(20)
+  .step(0.01)
+  .name('uFrequency.x')
+gui
+  .add(material.uniforms.uFrequency.value, 'y')
+  .min(0)
+  .max(20)
+  .step(0.01)
+  .name('uFrequency.y')
 // Mesh
 const mesh = new THREE.Mesh(geometry, material)
 // mesh.position.x = 1 // 改变 modelMatrix
+mesh.scale.y = 2 / 3
 scene.add(mesh)
 const axesHelper = new THREE.AxesHelper(1)
 scene.add(axesHelper)
@@ -68,7 +94,12 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+const camera = new THREE.PerspectiveCamera(
+  75,
+  sizes.width / sizes.height,
+  0.1,
+  100
+)
 camera.position.set(0.25, -0.25, 1)
 scene.add(camera)
 
@@ -92,6 +123,9 @@ const clock = new THREE.Clock()
 
 const tick = () => {
   const elapsedTime = clock.getElapsedTime()
+
+  // Update material
+  material.uniforms.uTime.value = elapsedTime
 
   // Update controls
   controls.update()

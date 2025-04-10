@@ -3498,7 +3498,7 @@ const material = new THREE.RawShaderMaterial({
 | **`extensions`**     | `{ [key: string]: any }`            | 否       | `{}`              | 启用 WebGL 扩展（如 `{ derivatives: true }` 启用 `GL_OES_standard_derivatives`）。 |
 | `flatShading`        | `boolean`                           | 否       | `false`           | 定义材质是否使用平面着色进行渲染                             |
 
-回到 `vertex.glsl`
+### vertex.glsl
 
 他会对每个顶点执行这段代码
 
@@ -3576,3 +3576,88 @@ modelPosition.z += sin(modelPosition.x * 10.0) * 0.1;
 https://learnopengl.com/Getting-started/Coordinate-Systems
 
 <img src="https://learnopengl.com/img/getting-started/coordinate_systems.png" alt="img" style="zoom:80%;" />
+
+### fragment.glsl
+
+```glsl
+precision mediump float;
+
+void main() {
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+```
+
+`precision mediump float;`
+
+定义浮点数的精度：`highp`，`mediump`，`lowp`
+
+为什么需要？当你在处理非常大、非常小的数值时，或者需要大幅缩小场景，然后放大到场景中的一个很小的物体上，可能会影响渲染效果。
+
+`highp`会影响性能，而且低端设备上可能无法支持；`lowp`可能因为缺乏精度引发错误。所以通常使用 `mediump`
+
+```glsl
+ gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+```
+
+`vec4(r, g, b, a)`给每个可见片段上色，更改透明度时，需要给`material`设置 `transparent: true`
+
+
+
+创建 attribute
+
+在Three中，给 geometry 新增一个名为 randoms 的 attribute
+
+```js
+geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1))
+```
+
+在vertex.glsl中，通过 `attribute float aRandom;`接收，因为只是给 z 加个随机值，所以只有一个的 float 类型。在 `varying float vRandom;`将 aRandom 赋值给 vRandom (不使用`varying float aRandom;`是因为声明了相同的变量)，发送给 fragment.glsl
+
+```glsl
+// ...
+attribute vec3 position;
+attribute float aRandom;
+
+varying float vRandom;
+
+void main() {
+  vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+  modelPosition.z += sin(modelPosition.x * 10.0) * 0.1;
+  modelPosition.z += aRandom * 0.1
+  // ...
+  vRandom = aRandom;
+}
+```
+
+在 fragment.glsl 同样的方式接收 vRandom
+
+```glsl
+precision mediump float;
+
+varying float vRandom;
+
+void main() {
+    gl_FragColor = vec4(0.5, vRandom, 1, 1.0);
+}
+```
+
+
+
+我们想加上textrue时，会选取那个纹理上的色彩像素，给物体着色，所以需要在 fragment shader 中实现
+
+
+
+`ShaderMaterial`和`RawShaderMaterial`相同，只不过提前加入了一些声明：
+
+```
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
+attribute vec3 position;
+attribute vec2 uv;
+precision mediump float;
+```
+
+
+
+如果想查看某些值，我们可以发送给`gl_FragColor`显示，查看uv `gl_FragColor = vec4(vuv, 1.0, 1.0);`
