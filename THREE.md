@@ -3429,4 +3429,150 @@ Threejs有两种着色器`ShaderMaterial` `RawShaderMaterial`。`ShaderMaterial`
 
 ### RawShaderMaterial
 
-`THREE.RawShaderMaterial`创建原始着色器
+`THREE.RawShaderMaterial`创建原始着色器,`RawShaderMaterial` 不会自动注入 Three.js 的内置着色器代码（如光照、矩阵变换等），开发者需要手动管理所有 Uniforms 和 Attributes。
+
+分别创建`vertex.glsl`和`fragment.glsl`文件, 使用 `vite-plugin-glsl`或者`vite-plugin-glslify`插件，可以将大的着色器分割为小的模块，可以重用着色器块，以及可以使用其他开发者编写的着色器块.
+
+```bash
+ npm install vite-plugin-glsl
+```
+
+在`vite.config.js`中导入glsl
+
+```js
+import glsl from 'vite-plugin-glsl'
+export default {
+  // ...
+  plugins: [
+    glsl(),
+  ],
+}
+```
+
+使用
+
+```js
+// vertex.glsl
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
+
+attribute vec3 position;
+
+void main() {
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+}
+
+// fragment.glsl
+precision mediump float;
+
+void main() {
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}
+
+// script.js
+import testVertexShader from './shader/vertex.glsl'
+import testFragmentShader from './shader/fragment.glsl'
+const material = new THREE.RawShaderMaterial({
+  vertexShader: vertexShader,
+  fragmentShader: fragmentShader,
+})
+```
+
+
+
+在`THREE.RawShaderMaterial`中，THREEjs中的material同样可以使用`wireframe`, `side`, `transparent`, `flatShading`这些属性。但是像`map`，`alphaMap`,`opacity`等等都没法使用，因为这些事在顶点内部处理的，只有在`fragmentShader`中才能更改
+
+| **参数名**           | **类型**                            | **必填** | **默认值**        | **描述**                                                     |
+| :------------------- | :---------------------------------- | :------- | :---------------- | :----------------------------------------------------------- |
+| **`vertexShader`**   | `string`                            | 是       | `undefined`       | 顶点着色器代码（需完整编写，无 Three.js 内置代码注入）。     |
+| **`fragmentShader`** | `string`                            | 是       | `undefined`       | 片元着色器代码（需完整编写，无 Three.js 内置代码注入）。     |
+| **`uniforms`**       | `{ [key: string]: { value: any } }` | 否       | `{}`              | 手动定义着色器所需的 Uniforms（如 `projectionMatrix`, `modelViewMatrix`）。 |
+| **`defines`**        | `{ [key: string]: any }`            | 否       | `{}`              | 预处理器宏定义（如 `#define USE_COLOR`），在着色器编译前注入。 |
+| **`glslVersion`**    | `string`                            | 否       | `null`            | 指定 GLSL 版本（如 `'300 es'`），需与着色器中的 `#version` 声明一致。 |
+| **`transparent`**    | `boolean`                           | 否       | `false`           | 是否启用透明度混合（需在片元着色器中返回含透明通道的颜色）。 |
+| **`side`**           | `THREE.Side`                        | 否       | `THREE.FrontSide` | 渲染面：`THREE.FrontSide`（正面）、`THREE.BackSide`（背面）、`THREE.DoubleSide`（双面）。 |
+| **`depthTest`**      | `boolean`                           | 否       | `true`            | 是否启用深度测试（遮挡关系）。                               |
+| **`depthWrite`**     | `boolean`                           | 否       | `true`            | 是否写入深度缓冲区。                                         |
+| **`wireframe`**      | `boolean`                           | 否       | `false`           | 是否以线框模式渲染几何体。                                   |
+| **`extensions`**     | `{ [key: string]: any }`            | 否       | `{}`              | 启用 WebGL 扩展（如 `{ derivatives: true }` 启用 `GL_OES_standard_derivatives`）。 |
+| `flatShading`        | `boolean`                           | 否       | `false`           | 定义材质是否使用平面着色进行渲染                             |
+
+回到 `vertex.glsl`
+
+他会对每个顶点执行这段代码
+
+```glsl
+// vertex.glsl
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
+
+attribute vec3 position;
+
+void main() {
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+}
+```
+
+`gl_Position` 为什么是一个`vec4`?
+
+这是因为我们的坐标实际上是在裁剪空间里，裁剪空间不是一个二维空间，是一个四维的投影变换，将3D场景转换为2D屏幕坐标。当我们从camera观察其中一个物体时，最终渲染是在2d的canvas上的，除了知道他的顶点坐标(x,y,z)，还需要知道他的深度，帮助计算机判断物体哪个顶点坐标在前，形成透视效果。在正交投影中，`w` 分量通常为 `1`，因此不影响结果。
+
+
+
+```glsl
+attribute vec3 position;
+```
+
+attribute (属性)是顶点间变化的数据。就像创建 BufferGeometry 时 BufferAttribute 中的 Float32Array 数组一样。通过它我们来设置顶点的位置属性。
+
+这个值从实例化的`THREE.xxxGeometry`中 `geometry.attributes.position`中的每个坐标点
+
+```glsl
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
+```
+
+每个矩阵都会对 `gl_Position`进行变换，最终时将顶点定位在裁剪空间内。所以在渲染时我们会应用不同的矩阵，直到获得裁剪空间的顶点坐标。
+
+> 在每次顶点着色器运行结束时，OpenGL 期望坐标在特定范围内，并且任何超出此范围的坐标都将被剪裁。被剪切的坐标将被丢弃，因此剩余的坐标最终将在屏幕上显示为片段。这也是 clip space (裁剪空间)名称的由来。
+
+上面三个矩阵都是 uniform 的，不会改变，对几何体的每个顶点都采用相同的矩阵运算
+
+- `uniform mat4 modelMatrix;` 
+
+  模型矩阵，他将对每个顶点应用模型自身的变换（平移、旋转、缩放），将顶点从模型本地坐标系转换到世界坐标系。
+
+  `mesh.position.x = 1`就会变换这个矩阵，只需要提供(position, rotation, scale)
+
+- `uniform mat4 viewMatrix;` 
+
+  相机矩阵，他定义相机的位姿（位置和朝向），将顶点从世界坐标系转换到相机坐标系。
+
+  同理，改变camera的 position, rotation, near, far都会变换这个矩阵 
+
+- `uniform mat4 projectionMatrix;` 
+
+  投影矩阵，它负责将3D场景从相机视角（观察空间）投影到2D裁剪空间。
+
+`gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);`组合顺序不能变，等价于下面的代码
+
+```glsl
+vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+vec4 viewPosition = viewMatrix * modelPosition;
+vec4 projectionPosition = projectionMatrix * viewPosition;
+
+gl_Position = projectionPosition;
+```
+
+```glsl
+modelPosition.z += sin(modelPosition.x * 10.0) * 0.1;
+```
+
+添加波浪效果
+
+https://learnopengl.com/Getting-started/Coordinate-Systems
+
+<img src="https://learnopengl.com/img/getting-started/coordinate_systems.png" alt="img" style="zoom:80%;" />
