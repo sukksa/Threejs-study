@@ -10,7 +10,8 @@ varying float vElevation;
 void main() {
     // 第一个参数是纹理，第二个参数是在纹理的哪个位置着色也就是uv坐标
     vec4 textrueColor = texture2D(uTexture, vUv);
-    textrueColor.rgb *= vElevation * 2.0 + 0.5; // [0.3, 0.7]
+    // textrueColor.rgb *= vElevation * 2.0 + 0.5; // [0.3, 0.7]
+
     // gl_FragColor = vec4(uColor, 1.0);
 
     gl_FragColor = vec4(textrueColor);
