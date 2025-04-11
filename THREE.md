@@ -3402,30 +3402,13 @@ shader 是用 GLSL(OpenGL Shading Language) 编写的程序，他会被发送到
 
 我们会为shader发送大量的数据，比如顶点坐标、网格变换信息、摄像机的信息以及几何体的顶点颜色、纹理等等。然后交给CPU，利用GLSL编写的着色器程序处理这些数据，最终在屏幕上定位顶点，并为每个可见片段着色
 
-着色器有两种类型
-
-- vertex shader
-- fragment shader
-
-7min
-
-### Vertex Shader
-
-顶点着色器会为每个几何体的顶点定位
-
-当顶点着色器为顶点定位完之后，GPU 便知道哪些几何体的像素是可见的，然后进入片段着色器(fragment shader)
-
-
-
-
-
 为什么要自己编写着色器？为什么我们不能直接使用Threejs的内置材质？
 
 - 材质不够灵活，一些形状通过内置的material无法实现
 - 着色器高效，比Threejs需要性能开销更少
 - 可以做后期处理
 
-Threejs有两种着色器`ShaderMaterial` `RawShaderMaterial`。`ShaderMaterial`包含了必要的一些代码，能帮助我们节省时间，提高速度。`RawShaderMaterial`就是原始的，必须编写所有代码。
+Threejs有两种着色器`ShaderMaterial` `RawShaderMaterial`。`ShaderMaterial`包含了必要的`uniforms`和`attributes`的声明，除此之外并无差别。`RawShaderMaterial`就是原始的，必须编写所有代码。
 
 ### RawShaderMaterial
 
@@ -3498,166 +3481,19 @@ const material = new THREE.RawShaderMaterial({
 | **`extensions`**     | `{ [key: string]: any }`            | 否       | `{}`              | 启用 WebGL 扩展（如 `{ derivatives: true }` 启用 `GL_OES_standard_derivatives`）。 |
 | `flatShading`        | `boolean`                           | 否       | `false`           | 定义材质是否使用平面着色进行渲染                             |
 
-### vertex.glsl
+### ShaderMaterial
 
-他会对每个顶点执行这段代码
-
-```glsl
-// vertex.glsl
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
-
-attribute vec3 position;
-
-void main() {
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
-}
-```
-
-`gl_Position` 为什么是一个`vec4`?
-
-这是因为我们的坐标实际上是在裁剪空间里，裁剪空间不是一个二维空间，是一个四维的投影变换，将3D场景转换为2D屏幕坐标。当我们从camera观察其中一个物体时，最终渲染是在2d的canvas上的，除了知道他的顶点坐标(x,y,z)，还需要知道他的深度，帮助计算机判断物体哪个顶点坐标在前，形成透视效果。在正交投影中，`w` 分量通常为 `1`，因此不影响结果。
-
-
-
-```glsl
-attribute vec3 position;
-```
-
-attribute (属性)是顶点间变化的数据。就像创建 BufferGeometry 时 BufferAttribute 中的 Float32Array 数组一样。通过它我们来设置顶点的位置属性。
-
-这个值从实例化的`THREE.xxxGeometry`中 `geometry.attributes.position`中的每个坐标点
+`ShaderMaterial`和`RawShaderMaterial`使用、参数、性能等都相同，只不过`ShaderMaterial`提前加入了一些声明：
 
 ```glsl
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
-```
 
-每个矩阵都会对 `gl_Position`进行变换，最终时将顶点定位在裁剪空间内。所以在渲染时我们会应用不同的矩阵，直到获得裁剪空间的顶点坐标。
-
-> 在每次顶点着色器运行结束时，OpenGL 期望坐标在特定范围内，并且任何超出此范围的坐标都将被剪裁。被剪切的坐标将被丢弃，因此剩余的坐标最终将在屏幕上显示为片段。这也是 clip space (裁剪空间)名称的由来。
-
-上面三个矩阵都是 uniform 的，不会改变，对几何体的每个顶点都采用相同的矩阵运算
-
-- `uniform mat4 modelMatrix;` 
-
-  模型矩阵，他将对每个顶点应用模型自身的变换（平移、旋转、缩放），将顶点从模型本地坐标系转换到世界坐标系。
-
-  `mesh.position.x = 1`就会变换这个矩阵，只需要提供(position, rotation, scale)
-
-- `uniform mat4 viewMatrix;` 
-
-  相机矩阵，他定义相机的位姿（位置和朝向），将顶点从世界坐标系转换到相机坐标系。
-
-  同理，改变camera的 position, rotation, near, far都会变换这个矩阵 
-
-- `uniform mat4 projectionMatrix;` 
-
-  投影矩阵，它负责将3D场景从相机视角（观察空间）投影到2D裁剪空间。
-
-`gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);`组合顺序不能变，等价于下面的代码
-
-```glsl
-vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-vec4 viewPosition = viewMatrix * modelPosition;
-vec4 projectionPosition = projectionMatrix * viewPosition;
-
-gl_Position = projectionPosition;
-```
-
-```glsl
-modelPosition.z += sin(modelPosition.x * 10.0) * 0.1;
-```
-
-添加波浪效果
-
-https://learnopengl.com/Getting-started/Coordinate-Systems
-
-<img src="https://learnopengl.com/img/getting-started/coordinate_systems.png" alt="img" style="zoom:80%;" />
-
-### fragment.glsl
-
-```glsl
-precision mediump float;
-
-void main() {
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-}
-```
-
-`precision mediump float;`
-
-定义浮点数的精度：`highp`，`mediump`，`lowp`
-
-为什么需要？当你在处理非常大、非常小的数值时，或者需要大幅缩小场景，然后放大到场景中的一个很小的物体上，可能会影响渲染效果。
-
-`highp`会影响性能，而且低端设备上可能无法支持；`lowp`可能因为缺乏精度引发错误。所以通常使用 `mediump`
-
-```glsl
- gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-```
-
-`vec4(r, g, b, a)`给每个可见片段上色，更改透明度时，需要给`material`设置 `transparent: true`
-
-
-
-创建 attribute
-
-在Three中，给 geometry 新增一个名为 randoms 的 attribute
-
-```js
-geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1))
-```
-
-在vertex.glsl中，通过 `attribute float aRandom;`接收，因为只是给 z 加个随机值，所以只有一个的 float 类型。在 `varying float vRandom;`将 aRandom 赋值给 vRandom (不使用`varying float aRandom;`是因为声明了相同的变量)，发送给 fragment.glsl
-
-```glsl
-// ...
-attribute vec3 position;
-attribute float aRandom;
-
-varying float vRandom;
-
-void main() {
-  vec4 modelPosition = modelMatrix * vec4(position, 1.0);
-  modelPosition.z += sin(modelPosition.x * 10.0) * 0.1;
-  modelPosition.z += aRandom * 0.1
-  // ...
-  vRandom = aRandom;
-}
-```
-
-在 fragment.glsl 同样的方式接收 vRandom
-
-```glsl
-precision mediump float;
-
-varying float vRandom;
-
-void main() {
-    gl_FragColor = vec4(0.5, vRandom, 1, 1.0);
-}
-```
-
-
-
-我们想加上textrue时，会选取那个纹理上的色彩像素，给物体着色，所以需要在 fragment shader 中实现
-
-
-
-`ShaderMaterial`和`RawShaderMaterial`相同，只不过提前加入了一些声明：
-
-```
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
 attribute vec3 position;
 attribute vec2 uv;
+
 precision mediump float;
 ```
 
-
-
-如果想查看某些值，我们可以发送给`gl_FragColor`显示，查看uv `gl_FragColor = vec4(vuv, 1.0, 1.0);`
+`RawShaderMaterial`中所有`uniforms`和`attributes`需用户手动声明和赋值。

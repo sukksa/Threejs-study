@@ -49,18 +49,9 @@ const material = new THREE.RawShaderMaterial({
   },
 })
 
-gui
-  .add(material.uniforms.uFrequency.value, 'x')
-  .min(0)
-  .max(20)
-  .step(0.01)
-  .name('uFrequency.x')
-gui
-  .add(material.uniforms.uFrequency.value, 'y')
-  .min(0)
-  .max(20)
-  .step(0.01)
-  .name('uFrequency.y')
+gui.add(material.uniforms.uFrequency.value, 'x').min(0).max(20).step(0.01).name('uFrequency.x')
+gui.add(material.uniforms.uFrequency.value, 'y').min(0).max(20).step(0.01).name('uFrequency.y')
+gui.addColor(material.uniforms.uColor, 'value').name('uColor')
 // Mesh
 const mesh = new THREE.Mesh(geometry, material)
 // mesh.position.x = 1 // 改变 modelMatrix
@@ -94,12 +85,7 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(
-  75,
-  sizes.width / sizes.height,
-  0.1,
-  100
-)
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
 camera.position.set(0.25, -0.25, 1)
 scene.add(camera)
 

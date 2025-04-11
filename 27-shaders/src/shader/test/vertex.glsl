@@ -20,8 +20,8 @@ void main() {
   vec4 projectionPosition = projectionMatrix * viewPosition;
 
   gl_Position = projectionPosition;
+  // gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
 
   vUv = uv;
   vElevation = elevation;
-  // gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
 }
