@@ -29,6 +29,7 @@ const material = new THREE.ShaderMaterial({
   side: THREE.DoubleSide,
 })
 
+console.log(geometry.attributes.uv)
 // Mesh
 const mesh = new THREE.Mesh(geometry, material)
 scene.add(mesh)
@@ -60,7 +61,12 @@ window.addEventListener('resize', () => {
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
+const camera = new THREE.PerspectiveCamera(
+  75,
+  sizes.width / sizes.height,
+  0.1,
+  100
+)
 camera.position.set(0.25, -0.25, 1)
 scene.add(camera)
 
