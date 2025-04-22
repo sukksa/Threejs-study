@@ -8,7 +8,7 @@ import testFragmentShader from './shaders/test/fragment.glsl'
  * Base
  */
 // Debug
-const gui = new GUI()
+// const gui = new GUI()
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -34,7 +34,7 @@ console.log(geometry.attributes.uv)
 const mesh = new THREE.Mesh(geometry, material)
 scene.add(mesh)
 const axesHelper = new THREE.AxesHelper(1)
-scene.add(axesHelper)
+// scene.add(axesHelper)
 /**
  * Sizes
  */

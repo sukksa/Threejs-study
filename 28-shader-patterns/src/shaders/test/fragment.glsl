@@ -52,6 +52,12 @@ float cnoise(vec2 P) {
 }
 
 void main() {
+    // pattern 1
+    // gl_FragColor = vec4(vUv, 1.0, 1.0);
+
+    // pattern 2
+    // gl_FragColor = vec4(vUv, 0.0, 1.0);
+
     //  // pattern 3
     // float strength = vUv.x; 
 
@@ -67,20 +73,20 @@ void main() {
     // // pattern 7
     // float strength = mod(vUv.y * 10.0, 1.0);
 
-    // // pattern 8
+    // pattern 8
     // float strength = mod(vUv.y * 10.0, 1.0);
-    // // if 会影响性能
-    // /*if(strength < 0.5) {
-    //     strength = 0.0;
-    // } else {
-    //     strength = 1.0;
-    // } 
+/*     // if 会影响性能
+    if(strength < 0.5) {
+        strength = 0.0;
+    } else {
+        strength = 1.0;
+    } 
 
-    // strength = strength < 0.5 ? 0.0 : 1.0; // 三元运算符
-    // */
+    strength = strength < 0.5 ? 0.0 : 1.0; // 三元运算符 */
+
     // strength = step(0.5, strength); // 超过阈值0.5，返回1.0，否则返回0.0
 
-    // // pattern 9
+    // pattern 9
     // float strength = mod(vUv.y * 10.0, 1.0);
     // strength = step(0.8, strength);
 
@@ -88,8 +94,8 @@ void main() {
     // float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
 
     // pattern 11
-    float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
-    strength += step(0.8, mod(vUv.y * 10.0, 1.0)); 
+    // float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
+    // strength += step(0.8, mod(vUv.y * 10.0, 1.0)); 
 
     // // pattern 12
     // float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
@@ -112,6 +118,12 @@ void main() {
     // float barY = step(0.4, mod(vUv.y * 10.0, 1.0));
     // barY *= step(0.8, mod(vUv.x * 10.0 + 0.2, 1.0));
     // float strength = barX + barY;
+
+    float barX = step(0.4, 1.0);
+    barX *= step(0.8, mod(vUv.y + 0.4, 1.0));
+    float barY = step(0.4, 1.0);
+    barY *= step(0.8, mod(vUv.x + 0.4, 1.0));
+    float strength = barX + barY+0.1;
 
      // pattern 16
     // float strength = abs(vUv.x - 0.5);
@@ -264,14 +276,14 @@ void main() {
 
     // Clamp the strength to the range [0.0, 1.0]
     // 当strength超过了1，混合是第三个值会超过1，颜色的值被计算到更大的范围，所以需要限制界限
-    strength = clamp(strength, 0.0, 1.0); // 限制范围在0-1之间
+    // strength = clamp(strength, 0.0, 1.0); // 限制范围在0-1之间
 
-    // mix color
-    vec3 blackColor = vec3(0.0); // black
-    vec3 uvColor = vec3(vUv, 1.0);
-    vec3 mixedColor = mix(blackColor, uvColor, strength); // 混合颜色
-    gl_FragColor = vec4(mixedColor, 1.0); 
+    // // mix color
+    // vec3 blackColor = vec3(0.0); // black
+    // vec3 uvColor = vec3(vUv, 1.0);
+    // vec3 mixedColor = mix(blackColor, uvColor, strength); // 混合颜色
+    // gl_FragColor = vec4(mixedColor, 1.0); 
 
     // black and white
-    // gl_FragColor = vec4(vec3(strength), 1.0);
+    gl_FragColor = vec4(vec3(strength), 1.0);
 }
