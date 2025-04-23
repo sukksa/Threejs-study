@@ -94,8 +94,8 @@ void main() {
     // float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
 
     // pattern 11
-    // float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
-    // strength += step(0.8, mod(vUv.y * 10.0, 1.0)); 
+    float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
+    strength += step(0.8, mod(vUv.y * 10.0, 1.0)); 
 
     // // pattern 12
     // float strength = step(0.8, mod(vUv.x * 10.0, 1.0));
@@ -119,11 +119,11 @@ void main() {
     // barY *= step(0.8, mod(vUv.x * 10.0 + 0.2, 1.0));
     // float strength = barX + barY;
 
-    float barX = step(0.4, 1.0);
-    barX *= step(0.8, mod(vUv.y + 0.4, 1.0));
-    float barY = step(0.4, 1.0);
-    barY *= step(0.8, mod(vUv.x + 0.4, 1.0));
-    float strength = barX + barY+0.1;
+    // float barX = step(0.4, 1.0);
+    // barX *= step(0.8, mod(vUv.y + 0.4, 1.0));
+    // float barY = step(0.4, 1.0);
+    // barY *= step(0.8, mod(vUv.x + 0.4, 1.0));
+    // float strength = barX + barY+0.1;
 
      // pattern 16
     // float strength = abs(vUv.x - 0.5);
@@ -226,7 +226,8 @@ void main() {
     // float strength = 1.0 - step(0.01, abs(distance(wavedUv, vec2(0.5)) - 0.25));
 
     // pattern 41
-    // float angle = atan(vUv.x, vUv.y);
+    // float angle = atan(vUv.x/ vUv.y);
+    // float angle = atan(vUv.y, vUv.x);
     // float strength = angle;
 
     // pattern 42
@@ -257,7 +258,7 @@ void main() {
 
     // pattern 46 perlin noise 
     // https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
-    // 生成随机性、云朵，对面的倒影等等
+    // 生成随机性、云朵，水面的倒影等等
     // float strength = cnoise(vUv * 10.0);
 
     // pattern 47
@@ -271,19 +272,19 @@ void main() {
     // pattern 49
     // float strength = sin(cnoise(vUv * 10.0) * 20.0);
 
-    // pattern 49
+    // pattern 50
     // float strength = step(0.9, sin(cnoise(vUv * 10.0) * 20.0));
 
     // Clamp the strength to the range [0.0, 1.0]
     // 当strength超过了1，混合是第三个值会超过1，颜色的值被计算到更大的范围，所以需要限制界限
-    // strength = clamp(strength, 0.0, 1.0); // 限制范围在0-1之间
+    strength = clamp(strength, 0.0, 1.0); // 限制范围在0-1之间
 
     // // mix color
-    // vec3 blackColor = vec3(0.0); // black
-    // vec3 uvColor = vec3(vUv, 1.0);
-    // vec3 mixedColor = mix(blackColor, uvColor, strength); // 混合颜色
-    // gl_FragColor = vec4(mixedColor, 1.0); 
+    vec3 blackColor = vec3(0.0); // black
+    vec3 uvColor = vec3(vUv, 1.0);
+    vec3 mixedColor = mix(blackColor, uvColor, strength); // 混合颜色
+    gl_FragColor = vec4(mixedColor, 1.0); 
 
     // black and white
-    gl_FragColor = vec4(vec3(strength), 1.0);
+    // gl_FragColor = vec4(vec3(strength), 1.0);
 }
